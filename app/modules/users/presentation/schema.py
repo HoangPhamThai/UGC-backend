@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.modules.users.data.model import UserRole
 from app.modules.workspaces.data.model import Product
