@@ -61,6 +61,7 @@ async def list_workspaces(
     "",
     response_model=StandardResponse[WorkspaceResponse],
     status_code=status.HTTP_201_CREATED,
+    response_model_exclude_none=True,
 )
 async def create_workspace(
     body: CreateWorkspaceRequest = Body(...),
@@ -76,6 +77,7 @@ async def create_workspace(
 @router.get(
     "/{workspace_id}",
     response_model=StandardResponse[WorkspaceResponse],
+    response_model_exclude_none=True,
 )
 async def get_workspace(
     workspace_id: str = Path(...),
