@@ -40,6 +40,7 @@ def _to_response(user: User) -> ManagedUserResponse:
         id=user.id,
         email=user.email,
         role=user.role,
+        qc_product=user.qc_product,
         is_active=user.is_active,
         created_at=user.created_at,
     )
@@ -63,7 +64,10 @@ async def create_managed_user(
         )
     try:
         user = await uc.execute(
-            email=body.email, password=body.password, role=body.role
+            email=body.email,
+            password=body.password,
+            role=body.role,
+            qc_product=body.qc_product,
         )
         return create_success_response(_to_response(user), "User created")
     except ValueError as e:
@@ -165,11 +169,21 @@ async def update_user(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions",
             )
-        updated = await uc_update.execute(
-            user_id=user_id,
-            is_active=body.is_active,
-            password=body.password,
-        )
+        # Detect whether qc_product was explicitly present in the request body
+        # (`exclude_unset=True` returns the dict keys the client actually sent).
+        qc_provided = "qc_product" in body.model_dump(exclude_unset=True)
+        try:
+            updated = await uc_update.execute(
+                user_id=user_id,
+                is_active=body.is_active,
+                password=body.password,
+                qc_product=body.qc_product,
+                qc_product_provided=qc_provided,
+            )
+        except ValueError as ve:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve)
+            )
         if updated is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
