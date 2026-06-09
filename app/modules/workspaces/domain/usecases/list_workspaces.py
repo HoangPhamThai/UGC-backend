@@ -1,6 +1,5 @@
 # app/modules/workspaces/domain/usecases/list_workspaces.py
 from dataclasses import dataclass
-from typing import Optional
 
 from app.core.logging_mixin import LoggerMixin
 from app.core.permissions import Permission, has_permission
