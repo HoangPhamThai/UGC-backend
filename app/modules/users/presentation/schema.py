@@ -1,13 +1,17 @@
+# app/modules/users/presentation/schema.py
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
 from app.modules.users.data.model import UserRole
+from app.modules.workspaces.data.model import Product
 
 
 class UserMeResponse(BaseModel):
-    id: str = Field(..., description="User ID")
-    email: str = Field(..., description="Email")
-    is_active: bool = Field(..., description="Whether user is active")
-    role: UserRole = Field(..., description="User role")
-    created_at: datetime = Field(..., description="Account creation time")
+    id: str
+    email: str
+    is_active: bool
+    role: UserRole
+    qc_product: Optional[Product] = None
+    created_at: datetime
