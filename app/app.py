@@ -1,14 +1,14 @@
-"""
-Main FastAPI application setup.
-"""
+# app/app.py
+"""Main FastAPI application setup."""
 
+import logging
+import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-import logging
-import sys
 
 from app.core.db import mongo_connection
+from app.core.errors import register_exception_handlers
 from app.core.settings import settings
 from app.middlewares import setup_middleware
 from app.modules.admin.presentation.routes import router as admin_router
@@ -19,6 +19,11 @@ from app.modules.users.domain.usecases.bootstrap_superuser import (
 )
 from app.modules.users.domain.usecases.create_user import CreateUserUseCase
 from app.modules.users.presentation.routes import router as users_router
+from app.modules.workspaces.data.repo import (
+    ArticleDataRepository,
+    WorkspaceDataRepository,
+)
+from app.modules.workspaces.presentation.routes import router as workspaces_router
 
 
 logging.basicConfig(
@@ -32,6 +37,11 @@ logging.basicConfig(
 async def lifespan(app: FastAPI):
     await mongo_connection.connect()
 
+    # Ensure workspaces indexes
+    await WorkspaceDataRepository().ensure_indexes()
+    await ArticleDataRepository().ensure_indexes()
+
+    # Bootstrap superuser
     user_repo = UserDataRepository()
     bootstrap = BootstrapSuperuserUseCase(
         user_repo=user_repo,
@@ -55,10 +65,12 @@ app = FastAPI(
 )
 
 setup_middleware(app)
+register_exception_handlers(app)
 
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
+app.include_router(workspaces_router, prefix="/api/v1")
 
 
 @app.get("/health")
