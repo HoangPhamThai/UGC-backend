@@ -207,7 +207,7 @@ Revoke the caller's current refresh token (the refresh-token row is deleted serv
 
 ### 3.1 `GET /api/v1/users/me`
 
-Returns the authenticated user.
+Returns the authenticated user **plus the full list of permissions granted by their role**. The frontend should call this once after login and cache the result — it's the single source of truth for UI gating (which buttons to show, which routes to allow, which transitions to enable).
 
 **Auth:** Bearer.
 
@@ -222,16 +222,62 @@ Returns the authenticated user.
     "is_active": true,
     "role": "creator",
     "qc_product": null,
+    "permissions": ["workspaces:create"],
     "created_at": "2026-06-09T12:34:56.000Z"
-  }
+  },
+  "message": "User retrieved"
 }
 ```
 
+**Fields:**
+
 - `role`: one of `"creator" | "qc" | "admin" | "superuser"`.
 - `qc_product`: present only when `role == "qc"`; one of the Product codes in §8. `null` for all other roles.
+- `permissions`: array of permission strings the caller has been granted (derived from `role`). Always present, ordered by enum declaration order, never `null`. See §3.2 for the full list.
 - `created_at`: ISO-8601 datetime (existing contract; the workspaces module uses epoch ms instead).
 
-The frontend should call this once after login to learn the user's role + qc_product, since those drive UI gating (e.g. show "Create Workspace" only to creators/superusers).
+### 3.2 Permission strings & how to use them
+
+A permission string is `<resource>:<action>[:<scope>]`. The frontend should treat the `permissions` array as an opaque set — feature-gate UI by checking membership, never by inferring from `role`:
+
+```ts
+const can = (p: string) => me.permissions.includes(p)
+
+// examples
+const showCreateWorkspaceBtn = can("workspaces:create")
+const showApproveBtn         = can("workspaces:review")
+const showAdminUserListMenu  = can("users:read:qc") || can("users:read:admin") || can("users:read:creator")
+```
+
+The full permission vocabulary:
+
+| Permission | Meaning |
+|---|---|
+| `users:create:admin` | Create new admin users (admin-management section) |
+| `users:create:qc` | Create new QC users (admin can do this) |
+| `users:read:admin` | List/view admin users |
+| `users:read:qc` | List/view QC users |
+| `users:read:creator` | List/view creator users |
+| `users:update:admin` | Activate/deactivate, change password of an admin |
+| `users:update:qc` | Activate/deactivate, change password, reassign `qc_product` of a QC |
+| `users:update:creator` | Activate/deactivate, change password of a creator |
+| `workspaces:create` | Create their own workspace via `POST /api/v1/workspaces` |
+| `workspaces:read:any` | See every workspace in the system (admin / superuser) |
+| `workspaces:read:by_product` | See workspaces containing articles in their `qc_product` (QC) |
+| `workspaces:review` | Use the `start-review`, `approve`, `reject` endpoints |
+
+Per-role grants (what `permissions` will contain for each role):
+
+| Role | `permissions` returned |
+|---|---|
+| `superuser` | every entry above (12 entries) |
+| `admin` | `users:create:qc`, `users:read:qc`, `users:read:creator`, `users:update:qc`, `workspaces:read:any` |
+| `qc` | `users:read:creator`, `workspaces:read:by_product`, `workspaces:review` |
+| `creator` | `workspaces:create` |
+
+**Ownership is not a permission.** Operations like "edit this workspace" or "submit this article" are gated by row-level ownership, not by a permission bit — the backend handles them by checking `workspace.owner_user_id == caller.id` inside the use case. The frontend can simply rely on the API: a `404` or `403` on a write means the user can't perform that action.
+
+**Stability.** The `permissions` array is part of this contract; new permissions are additive. Treat unknown strings as "the user can do something I don't gate on yet" — don't crash on them.
 
 ---
 
@@ -930,7 +976,7 @@ The exact wording of `message` may evolve. The frontend should switch on **statu
 ## 11. Integration checklist for the frontend
 
 1. **Token storage and refresh.** Store both `access_token` and `refresh_token` from `/auth/login`. On any `401`, attempt a single refresh via `/auth/refresh`; if the refresh also fails, log the user out.
-2. **Bootstrap call after login.** Call `GET /users/me` once to learn `role` and `qc_product`; cache those in client state and use them to gate UI affordances (create button, review buttons, etc.).
+2. **Bootstrap call after login.** Call `GET /users/me` once to learn `role`, `qc_product`, **and the `permissions` array**; cache the response in client state. Gate every UI affordance by checking permission membership (e.g. `me.permissions.includes("workspaces:create")`) rather than by switching on `role`. The set of permissions is the contract; the role is just a convenient label.
 3. **Workspace list endpoint** drives the grid; use `article_count` and `products` directly on each card. For a QC, `products` is always a one-element array of their assigned product — render accordingly.
 4. **Workspace detail** is the source of truth for the tab rail and editor. The `articles` array is already filtered for the caller's scope; don't apply additional client-side filtering.
 5. **Autosave** the `PATCH /articles/{id}` call on a 5-second debounce; flush pending content immediately on tab-switch / route-leave. On `409` (status changed mid-edit), refetch the detail endpoint and re-render — the article is no longer editable.
