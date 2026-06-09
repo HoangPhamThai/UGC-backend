@@ -1,7 +1,9 @@
 # Roles & Permissions; Remove API Keys Module — Design
 
 Date: 2026-06-09
-Status: Proposed
+Status: Proposed (revised)
+
+> **Revision note.** A `qc_product` field is added to `User`. QCs are scoped to exactly one product (see `UGC/__documents__/roles.md` §3.1 and the workspaces spec). The product enum itself lives in the workspaces module (`app.modules.workspaces.data.model.Product`).
 
 ## Summary
 
@@ -39,13 +41,40 @@ class UserRole(str, Enum):
 
 ### `User`
 
-The existing `User` Pydantic model in `app/modules/users/data/model.py` gains:
+The existing `User` Pydantic model in `app/modules/users/data/model.py` gains two new fields:
 
 ```python
+from app.modules.workspaces.data.model import Product  # closed enum, see workspaces spec
+
 role: UserRole = Field(default=UserRole.CREATOR, description="User role")
+qc_product: Optional[Product] = Field(default=None, description="Product the QC is assigned to; required when role=qc, must be None otherwise")
 ```
 
 `default=CREATOR` means self-registration does not need to specify a role, and any pre-existing user documents without a `role` field read as `creator` automatically.
+
+### `qc_product` invariant
+
+The model enforces a two-way relationship between `role` and `qc_product` via a Pydantic `model_validator`:
+
+```python
+@model_validator(mode="after")
+def _check_qc_product(self) -> "User":
+    if self.role == UserRole.QC and self.qc_product is None:
+        raise ValueError("qc_product is required when role=qc")
+    if self.role != UserRole.QC and self.qc_product is not None:
+        raise ValueError("qc_product must be None when role is not qc")
+    return self
+```
+
+This means:
+
+- Creating any non-QC user with `qc_product` set → validation error (422).
+- Creating a QC user without `qc_product` → validation error (422).
+- A pre-existing user document whose role is `creator`/`admin`/`superuser` reads back as `qc_product=None` (default), so the invariant holds without a migration for non-QC rows. The workspaces module separately guards against a QC reaching its code path with `qc_product=None` via `QcMisconfiguredError` (a data-integrity 500).
+
+### Import direction
+
+`User` imports `Product` from `app.modules.workspaces.data.model`. If the team prefers `users` to be independent of `workspaces`, move `Product` to a shared location (e.g. `app/core/product.py`) and import from there in both modules. The workspaces spec also flags this option.
 
 ### `Permission`
 
@@ -132,10 +161,10 @@ All endpoints require Bearer auth. Permission checks per row.
 
 | Method | Path | Permission(s) | Body / Query | Behavior |
 |---|---|---|---|---|
-| `POST` | `/admin/users` | `users:create:admin` for `role=admin`; `users:create:qc` for `role=qc` | `{email, password, role}` | Create an admin or QC. Rejects `role` of `creator` or `superuser` with 400. Returns the created user (id, email, role, is_active, created_at). |
-| `GET` | `/admin/users` | `users:read:{role}` for the requested `?role=` value | Query: `?role=admin|qc|creator` (required), `?page`, `?page_size` | List users of a given role. 403 if the caller lacks the corresponding read permission. Paginated. |
-| `GET` | `/admin/users/{user_id}` | `users:read:{target.role}` | — | Fetch one user by id. 404 if not found. 403 if caller lacks read permission for the target's role. |
-| `PATCH` | `/admin/users/{user_id}` | `users:update:{target.role}` | `{is_active?, password?}` | Partial update. `role` is intentionally not mutable. Setting `is_active=false` is the soft-deactivate path. |
+| `POST` | `/admin/users` | `users:create:admin` for `role=admin`; `users:create:qc` for `role=qc` | `{email, password, role, qc_product?}` | Create an admin or QC. Rejects `role` of `creator` or `superuser` with 400. `qc_product` is required when `role=qc`, must be omitted/null otherwise — enforced by the model validator (returns 422 on violation). Returns the created user (id, email, role, qc_product, is_active, created_at). |
+| `GET` | `/admin/users` | `users:read:{role}` for the requested `?role=` value | Query: `?role=admin\|qc\|creator` (required), `?page`, `?page_size` | List users of a given role. 403 if the caller lacks the corresponding read permission. Paginated. The QC list includes each user's `qc_product`. |
+| `GET` | `/admin/users/{user_id}` | `users:read:{target.role}` | — | Fetch one user by id. 404 if not found. 403 if caller lacks read permission for the target's role. Response includes `qc_product` when the target is a QC. |
+| `PATCH` | `/admin/users/{user_id}` | `users:update:{target.role}` | `{is_active?, password?, qc_product?}` | Partial update. `role` is intentionally not mutable. Setting `is_active=false` is the soft-deactivate path. `qc_product` may only be changed for a target whose `role=qc`; supplying it for any other role returns 400. Changing a QC's `qc_product` is the supported way to reassign them (see `roles.md` §3.1 — past review history is preserved on the article, the QC simply stops seeing the old product going forward). |
 
 ### Removed
 
@@ -234,7 +263,14 @@ db.users.updateMany(
   { $set: { role: "creator" } }
 );
 
-// 2. Drop the now-unused collection.
+// 2. Backfill qc_product for any pre-existing non-QC user docs (no-op on QC rows,
+//    which will be created fresh through the admin endpoint with the field set).
+db.users.updateMany(
+  { qc_product: { $exists: false } },
+  { $set: { qc_product: null } }
+);
+
+// 3. Drop the now-unused collection.
 db.api_keys.drop();
 ```
 
@@ -250,10 +286,11 @@ After implementation, smoke-check via curl against a running app:
 4. `GET /admin/users?role=qc` as the creator → 403.
 5. Restart app with `SUPERUSER_EMAIL`/`SUPERUSER_PASSWORD` set; log shows "superuser bootstrapped". Restart again; log shows "superuser already exists" (idempotency).
 6. Log in as the superuser; `POST /admin/users` with `{role: "admin", ...}` → 201. `POST /admin/users` with `{role: "creator", ...}` → 400.
-7. Log in as the new admin; `POST /admin/users` with `{role: "qc", ...}` → 201. Same call with `{role: "admin", ...}` → 403.
-8. As the admin, `GET /admin/users?role=creator` → 200 (read-only). `PATCH /admin/users/{creator_id}` with `is_active=false` → 403.
-9. As the superuser, `PATCH /admin/users/{creator_id}` with `is_active=false` → 200. The deactivated creator's next `POST /auth/login` → 401.
-10. `GET /api/v1/api-keys` → 404 (route removed).
+7. Log in as the new admin; `POST /admin/users` with `{role: "qc", qc_product: "CL", ...}` → 201. Same call with `{role: "qc", ...}` (no `qc_product`) → 422. Same call with `{role: "qc", qc_product: "NOTAPRODUCT"}` → 422. Same call with `{role: "admin", ...}` → 403.
+8. As the admin, `PATCH /admin/users/{qc_id}` with `{qc_product: "FD"}` → 200; subsequent `GET` confirms the change. `PATCH` with `{qc_product: "CL"}` on a non-QC user → 400.
+9. As the admin, `GET /admin/users?role=creator` → 200 (read-only). `PATCH /admin/users/{creator_id}` with `is_active=false` → 403. `PATCH .../qc_product` on a creator → 400.
+10. As the superuser, `PATCH /admin/users/{creator_id}` with `is_active=false` → 200. The deactivated creator's next `POST /auth/login` → 401.
+11. `GET /api/v1/api-keys` → 404 (route removed).
 
 ## Risks and rollback
 
