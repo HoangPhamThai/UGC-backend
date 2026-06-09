@@ -134,7 +134,8 @@ class WorkspaceDataRepository(LoggerMixin, WorkspaceRepo):
             {"$group": {"_id": "$workspace_id", "c": {"$sum": 1}}},
         ]
         result: dict[str, int] = {wid: 0 for wid in workspace_ids}
-        async for row in article_coll.aggregate(pipeline):
+        cursor = await article_coll.aggregate(pipeline)
+        async for row in cursor:
             result[row["_id"]] = row["c"]
         return result
 
@@ -149,7 +150,8 @@ class WorkspaceDataRepository(LoggerMixin, WorkspaceRepo):
             {"$group": {"_id": "$workspace_id", "products": {"$addToSet": "$product"}}},
         ]
         result: dict[str, list[Product]] = {wid: [] for wid in workspace_ids}
-        async for row in article_coll.aggregate(pipeline):
+        cursor = await article_coll.aggregate(pipeline)
+        async for row in cursor:
             result[row["_id"]] = sorted(
                 (Product(p) for p in row["products"]),
                 key=lambda p: list(Product).index(p),
