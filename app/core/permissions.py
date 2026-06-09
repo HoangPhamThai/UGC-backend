@@ -15,6 +15,10 @@ class Permission(str, Enum):
     USERS_UPDATE_ADMIN = "users:update:admin"
     USERS_UPDATE_QC = "users:update:qc"
     USERS_UPDATE_CREATOR = "users:update:creator"
+    WORKSPACES_CREATE = "workspaces:create"
+    WORKSPACES_READ_ANY = "workspaces:read:any"
+    WORKSPACES_READ_BY_PRODUCT = "workspaces:read:by_product"
+    WORKSPACES_REVIEW = "workspaces:review"
 
 
 ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
@@ -25,10 +29,17 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
             Permission.USERS_READ_QC,
             Permission.USERS_READ_CREATOR,
             Permission.USERS_UPDATE_QC,
+            Permission.WORKSPACES_READ_ANY,
         }
     ),
-    UserRole.QC: frozenset({Permission.USERS_READ_CREATOR}),
-    UserRole.CREATOR: frozenset(),
+    UserRole.QC: frozenset(
+        {
+            Permission.USERS_READ_CREATOR,
+            Permission.WORKSPACES_READ_BY_PRODUCT,
+            Permission.WORKSPACES_REVIEW,
+        }
+    ),
+    UserRole.CREATOR: frozenset({Permission.WORKSPACES_CREATE}),
 }
 
 
