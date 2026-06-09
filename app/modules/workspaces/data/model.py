@@ -33,3 +33,27 @@ class ArticleStatus(str, Enum):
     REVIEWING = "reviewing"
     APPROVED = "approved"
     REJECTED = "rejected"
+
+
+class Workspace(BaseMongoModel):
+    id: str = Field(default_factory=lambda: make_prefixed_id("ws"), alias="_id")
+    name: str = Field(..., min_length=1, max_length=100)
+    name_lower: str = Field(..., description="Lowercased name for unique index")
+    owner_user_id: str = Field(..., description="Owning creator user id")
+
+    class Config:
+        collection_name = "workspaces"
+
+
+class Article(BaseMongoModel):
+    id: str = Field(default_factory=lambda: make_prefixed_id("art"), alias="_id")
+    workspace_id: str = Field(..., description="Parent workspace id")
+    name: str = Field(..., min_length=1, max_length=100)
+    product: Product = Field(..., description="Closed-set product code, immutable")
+    content: str = Field(default="", description="TipTap HTML; may be empty")
+    status: ArticleStatus = Field(default=ArticleStatus.NOT_SUBMITTED)
+    reviewer_user_id: Optional[str] = Field(default=None)
+    reviewed_at: Optional[datetime] = Field(default=None)
+
+    class Config:
+        collection_name = "articles"
