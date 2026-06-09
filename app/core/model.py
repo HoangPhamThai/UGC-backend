@@ -11,20 +11,6 @@ def make_prefixed_id(prefix: str) -> str:
     """Generate a prefixed ID like 'kb_<uuid hex>'."""
     return f"{prefix}_{uuid.uuid4().hex}"
 
-
-# --- Shared domain types ---
-
-DocumentType = Literal["pdf", "doc", "text", "image", "tabular"]
-
-
-class ChunkingConfig(BaseModel):
-    """Chunking/embedding configuration shared by Knowledge Base and Job."""
-
-    chunk_sizes: List[int] = Field(..., description="Sizes for hierarchical chunking")
-    chunk_overlap: float = Field(default=0.2, description="Overlap ratio (0-1)")
-    embedding_model_code: str = Field(..., description="Embedding model code")
-
-
 # --- Base model ---
 
 

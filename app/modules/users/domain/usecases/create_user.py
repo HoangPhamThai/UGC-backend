@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from app.core.logging_mixin import LoggerMixin
 from app.core.security import hash_password
-from app.modules.users.data.model import User
+from app.modules.users.data.model import User, UserRole
 from app.modules.users.domain.repo import UserRepo
 
 
@@ -11,7 +11,13 @@ from app.modules.users.domain.repo import UserRepo
 class CreateUserUseCase(LoggerMixin):
     user_repo: UserRepo
 
-    async def execute(self, *, email: str, password: str) -> User:
+    async def execute(
+        self,
+        *,
+        email: str,
+        password: str,
+        role: UserRole = UserRole.CREATOR,
+    ) -> User:
         try:
             existing = await self.user_repo.get_by_email(email)
             if existing is not None:
@@ -20,9 +26,10 @@ class CreateUserUseCase(LoggerMixin):
             user = User(
                 email=email,
                 password_hashed=hash_password(password),
+                role=role,
             )
             created = await self.user_repo.create(user)
-            self.log_info(f"User created: id={created.id}")
+            self.log_info(f"User created: id={created.id} role={created.role.value}")
             return created
         except ValueError:
             raise

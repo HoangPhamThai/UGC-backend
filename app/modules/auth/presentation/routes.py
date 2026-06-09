@@ -1,9 +1,7 @@
-from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 
 from app.core.auth import get_current_user
 from app.core.model import StandardResponse, create_success_response
-from app.core.rate_limit import limiter
-from app.core.settings import settings
 from app.modules.auth.domain.usecases.register import RegisterUseCase
 from app.modules.auth.domain.usecases.login import LoginUseCase
 from app.modules.auth.domain.usecases.refresh import RefreshTokenUseCase
@@ -31,9 +29,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
     response_model=StandardResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@limiter.limit(settings.register_rate_limit)
 async def register(
-    request: Request,
     body: RegisterRequest = Body(...),
     uc: RegisterUseCase = Depends(get_uc_register),
 ):

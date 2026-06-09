@@ -2,6 +2,7 @@ import traceback
 from dataclasses import dataclass
 
 from app.core.logging_mixin import LoggerMixin
+from app.modules.users.data.model import UserRole
 from app.modules.users.domain.usecases.create_user import CreateUserUseCase
 
 
@@ -11,7 +12,9 @@ class RegisterUseCase(LoggerMixin):
 
     async def execute(self, *, email: str, password: str) -> None:
         try:
-            await self.uc_create_user.execute(email=email, password=password)
+            await self.uc_create_user.execute(
+                email=email, password=password, role=UserRole.CREATOR
+            )
             self.log_info(f"User registered: {email}")
         except ValueError:
             raise

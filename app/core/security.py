@@ -1,5 +1,4 @@
 import hashlib
-import secrets
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -49,17 +48,6 @@ def decode_token(token: str) -> dict:
     return jwt.decode(
         token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm]
     )
-
-
-# --- API key hashing (SHA-256) ---
-
-
-def generate_api_key() -> str:
-    return f"ak_{secrets.token_hex(32)}"
-
-
-def hash_api_key(raw_key: str) -> str:
-    return hashlib.sha256(raw_key.encode()).hexdigest()
 
 
 def hash_refresh_token(raw_token: str) -> str:
