@@ -1,5 +1,6 @@
 # app/modules/workspaces/domain/repo.py
 from abc import ABC, abstractmethod
+from datetime import date
 from typing import Optional
 
 from app.modules.workspaces.data.model import Article, ArticleStatus, Product, Workspace
@@ -39,6 +40,11 @@ class WorkspaceRepo(ABC):
     async def delete(self, workspace_id: str) -> None: ...
 
     @abstractmethod
+    async def increment_article_count(
+        self, workspace_id: str, *, by: int = 1
+    ) -> None: ...
+
+    @abstractmethod
     async def article_counts(
         self, workspace_ids: list[str], *, product: Optional[Product] = None
     ) -> dict[str, int]: ...
@@ -64,7 +70,20 @@ class ArticleRepo(ABC):
     async def workspace_has_product(self, workspace_id: str, product: Product) -> bool: ...
 
     @abstractmethod
-    async def update_content(self, article_id: str, content: str) -> Optional[Article]: ...
+    async def update_fields(
+        self,
+        article_id: str,
+        *,
+        name: Optional[str] = None,
+        product: Optional[Product] = None,
+        on_air_date: Optional[date] = None,
+        content: Optional[str] = None,
+    ) -> Optional[Article]:
+        """Set any provided subset of editable fields; bumps updated_at.
+
+        `content` is distinguished from "not provided" by being non-None, so an
+        empty string clears the content (articles may be empty)."""
+        ...
 
     @abstractmethod
     async def update_status(

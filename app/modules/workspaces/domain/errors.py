@@ -30,6 +30,14 @@ class ArticleStateConflictError(WorkspaceError):
         super().__init__(message)
 
 
+class InvalidInputError(WorkspaceError):
+    """Request data failed a business validation rule (e.g. empty name after
+    trim, on-air date in the past). Maps to 400."""
+
+    def __init__(self, message: str = "Invalid input") -> None:
+        super().__init__(message)
+
+
 class QcMisconfiguredError(WorkspaceError):
     """A QC user reached workspaces code with no qc_product. Data-integrity error. Maps to 500."""
 

@@ -56,8 +56,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="GreenRAG Backend",
-    description="GreenRAG Backend API",
+    title="UGC Backend",
+    description="UGC Backend API",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",

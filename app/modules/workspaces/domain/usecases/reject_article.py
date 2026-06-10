@@ -3,7 +3,11 @@ from dataclasses import dataclass
 
 from app.core.logging_mixin import LoggerMixin
 from app.modules.users.data.model import User, UserRole
-from app.modules.workspaces.data.model import Article, ArticleStatus
+from app.modules.workspaces.data.model import (
+    AWAITING_QC_STATUSES,
+    Article,
+    ArticleStatus,
+)
 from app.modules.workspaces.domain.errors import (
     ArticleNotFoundError,
     ArticleStateConflictError,
@@ -27,8 +31,8 @@ class RejectArticleUseCase(LoggerMixin):
                 raise QcMisconfiguredError()
             if article.product != caller.qc_product:
                 raise ArticleNotFoundError()
-        if article.status != ArticleStatus.REVIEWING:
-            raise ArticleStateConflictError("Article is not in a reviewable state")
+        if article.status not in AWAITING_QC_STATUSES:
+            raise ArticleStateConflictError("Article is not awaiting review")
         updated = await self.article_repo.update_status(
             article_id,
             status=ArticleStatus.REJECTED,

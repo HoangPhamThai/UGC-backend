@@ -1,8 +1,8 @@
 # app/modules/workspaces/presentation/schema.py
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.modules.workspaces.data.model import (
     Article,
@@ -22,10 +22,29 @@ class CreateWorkspaceRequest(BaseModel):
 class CreateArticleRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     product: Product
+    on_air_date: date
 
 
-class UpdateArticleContentRequest(BaseModel):
-    content: str = Field(default="")
+class UpdateArticleRequest(BaseModel):
+    """Unified article update — any subset of editable fields; at least one
+    required. `content` defaults to unset (None) so it is only written when the
+    caller actually sends it."""
+
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    product: Optional[Product] = None
+    on_air_date: Optional[date] = None
+    content: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _at_least_one(self) -> "UpdateArticleRequest":
+        if (
+            self.name is None
+            and self.product is None
+            and self.on_air_date is None
+            and self.content is None
+        ):
+            raise ValueError("at least one field must be provided")
+        return self
 
 
 # --- Responses ---
@@ -44,6 +63,7 @@ class ArticleResponse(BaseModel):
     product: Product
     content: str
     status: ArticleStatus
+    on_air_date: date
     created_at: int
     updated_at: int
 
@@ -56,6 +76,7 @@ class ArticleResponse(BaseModel):
             product=article.product,
             content=article.content,
             status=article.status,
+            on_air_date=article.on_air_date,
             created_at=_to_epoch_ms(article.created_at),
             updated_at=_to_epoch_ms(article.updated_at),
         )

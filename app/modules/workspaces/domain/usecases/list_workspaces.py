@@ -31,7 +31,7 @@ class ListWorkspacesUseCase(LoggerMixin):
             workspaces = await repo.list_all(skip=skip, limit=limit)
             total = await repo.count_all()
             ids = [w.id for w in workspaces]
-            counts = await repo.article_counts(ids)
+            counts = {w.id: w.article_count for w in workspaces}
             products = await repo.products_for(ids)
             return ListWorkspacesResult(workspaces, total, counts, products)
 
@@ -42,6 +42,8 @@ class ListWorkspacesUseCase(LoggerMixin):
             workspaces = await repo.list_with_product(p, skip=skip, limit=limit)
             total = await repo.count_with_product(p)
             ids = [w.id for w in workspaces]
+            # QC sees only their product, so the count must be filtered;
+            # the denormalized total on the workspace doc isn't usable here.
             counts = await repo.article_counts(ids, product=p)
             products = {wid: [p] for wid in ids}
             return ListWorkspacesResult(workspaces, total, counts, products)
@@ -49,7 +51,6 @@ class ListWorkspacesUseCase(LoggerMixin):
         # Creator (default): own workspaces only.
         workspaces = await repo.list_by_owner(caller.id, skip=skip, limit=limit)
         total = await repo.count_by_owner(caller.id)
-        ids = [w.id for w in workspaces]
-        counts = await repo.article_counts(ids)
-        products = await repo.products_for(ids)
+        counts = {w.id: w.article_count for w in workspaces}
+        products = await repo.products_for([w.id for w in workspaces])
         return ListWorkspacesResult(workspaces, total, counts, products)

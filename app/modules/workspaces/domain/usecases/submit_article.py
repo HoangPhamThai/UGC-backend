@@ -28,15 +28,20 @@ class SubmitArticleUseCase(LoggerMixin):
         if article is None or article.workspace_id != workspace_id:
             raise ArticleNotFoundError()
 
-        if article.status != ArticleStatus.NOT_SUBMITTED:
+        # Creator transitions (single "Submit for Review" button), article.md §4.2:
+        #   not_submitted     -> submitted   (first review)
+        #   feedback_provided -> edited       (resubmit after feedback)
+        if article.status == ArticleStatus.NOT_SUBMITTED:
+            target = ArticleStatus.SUBMITTED
+        elif article.status == ArticleStatus.FEEDBACK_PROVIDED:
+            target = ArticleStatus.EDITED
+        else:
             raise ArticleStateConflictError(
                 "Article is not in a submittable state"
             )
 
-        updated = await self.article_repo.update_status(
-            article_id, status=ArticleStatus.WAITING_FOR_REVIEW
-        )
+        updated = await self.article_repo.update_status(article_id, status=target)
         if updated is None:
             raise ArticleNotFoundError()
-        self.log_info(f"Article submitted: id={article_id}")
+        self.log_info(f"Article submitted: id={article_id} status={target.value}")
         return updated

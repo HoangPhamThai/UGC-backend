@@ -18,7 +18,6 @@ class CreateWorkspaceUseCase(LoggerMixin):
                 raise ValueError("name must not be empty")
             workspace = Workspace(
                 name=trimmed,
-                name_lower=trimmed.casefold(),
                 owner_user_id=owner_user_id,
             )
             created = await self.workspace_repo.create(workspace)

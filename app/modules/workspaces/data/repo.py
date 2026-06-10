@@ -1,15 +1,14 @@
 # app/modules/workspaces/data/repo.py
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional, override
 
 from pymongo import ASCENDING, ReturnDocument
 from pymongo.asynchronous.collection import AsyncCollection
-from pymongo.errors import DuplicateKeyError
 
 from app.core.db import get_db
 from app.core.logging_mixin import LoggerMixin
+from app.core.time import date_to_storage
 from app.modules.workspaces.data.model import Article, ArticleStatus, Product, Workspace
-from app.modules.workspaces.domain.errors import WorkspaceNameTakenError
 from app.modules.workspaces.domain.repo import ArticleRepo, WorkspaceRepo
 
 
@@ -27,22 +26,15 @@ class WorkspaceDataRepository(LoggerMixin, WorkspaceRepo):
     async def ensure_indexes(self) -> None:
         coll = await self._get_collection()
         await coll.create_index([("owner_user_id", ASCENDING)])
-        await coll.create_index(
-            [("owner_user_id", ASCENDING), ("name_lower", ASCENDING)],
-            unique=True,
-            name="uniq_owner_name_lower",
-        )
+        # Note: workspace names are intentionally NOT unique (workspace.md §2.1,
+        # §7). The legacy "uniq_owner_name_lower" index is dropped by the v2
+        # migration (app/jobs/migrate_workspaces_v2.py).
 
     @override
     async def create(self, workspace: Workspace) -> Workspace:
         coll = await self._get_collection()
-        # Repo owns name_lower normalization; callers never set it.
-        workspace.name_lower = workspace.name.casefold()
         payload = workspace.model_dump(by_alias=True)
-        try:
-            await coll.insert_one(payload)
-        except DuplicateKeyError:
-            raise WorkspaceNameTakenError()
+        await coll.insert_one(payload)
         return workspace
 
     @override
@@ -119,6 +111,18 @@ class WorkspaceDataRepository(LoggerMixin, WorkspaceRepo):
         await coll.delete_one({"_id": workspace_id})
 
     @override
+    async def increment_article_count(
+        self, workspace_id: str, *, by: int = 1
+    ) -> None:
+        coll = await self._get_collection()
+        # On decrement, require the current count to be at least `|by|` so we
+        # never write a negative value. On increment, no extra filter needed.
+        filt: dict = {"_id": workspace_id}
+        if by < 0:
+            filt["article_count"] = {"$gte": -by}
+        await coll.update_one(filt, {"$inc": {"article_count": by}})
+
+    @override
     async def article_counts(
         self, workspace_ids: list[str], *, product: Optional[Product] = None
     ) -> dict[str, int]:
@@ -180,6 +184,8 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
     async def create(self, article: Article) -> Article:
         coll = await self._get_collection()
         payload = article.model_dump(by_alias=True)
+        # bson cannot encode a bare date; store on_air_date as midnight-UTC.
+        payload["on_air_date"] = date_to_storage(article.on_air_date)
         await coll.insert_one(payload)
         return article
 
@@ -211,12 +217,28 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
         return doc is not None
 
     @override
-    async def update_content(self, article_id: str, content: str) -> Optional[Article]:
+    async def update_fields(
+        self,
+        article_id: str,
+        *,
+        name: Optional[str] = None,
+        product: Optional[Product] = None,
+        on_air_date: Optional[date] = None,
+        content: Optional[str] = None,
+    ) -> Optional[Article]:
         coll = await self._get_collection()
-        now = datetime.now(timezone.utc)
+        set_doc: dict = {"updated_at": datetime.now(timezone.utc)}
+        if name is not None:
+            set_doc["name"] = name
+        if product is not None:
+            set_doc["product"] = product.value
+        if on_air_date is not None:
+            set_doc["on_air_date"] = date_to_storage(on_air_date)
+        if content is not None:
+            set_doc["content"] = content
         doc = await coll.find_one_and_update(
             {"_id": article_id},
-            {"$set": {"content": content, "updated_at": now}},
+            {"$set": set_doc},
             return_document=ReturnDocument.AFTER,
         )
         return Article.model_validate(doc) if doc else None

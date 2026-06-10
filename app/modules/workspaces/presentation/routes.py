@@ -13,16 +13,16 @@ from app.modules.workspaces.presentation.deps import (
     get_uc_delete_workspace,
     get_uc_get_workspace,
     get_uc_list_workspaces,
+    get_uc_provide_feedback_article,
     get_uc_reject_article,
-    get_uc_start_review_article,
     get_uc_submit_article,
-    get_uc_update_article_content,
+    get_uc_update_article,
 )
 from app.modules.workspaces.presentation.schema import (
     ArticleResponse,
     CreateArticleRequest,
     CreateWorkspaceRequest,
-    UpdateArticleContentRequest,
+    UpdateArticleRequest,
     WorkspaceListResponse,
     WorkspaceResponse,
 )
@@ -125,6 +125,7 @@ async def create_article(
         workspace_id=workspace_id,
         name=body.name,
         product=body.product,
+        on_air_date=body.on_air_date,
         caller=current_user,
     )
     return create_success_response(
@@ -152,18 +153,21 @@ async def delete_article(
     "/{workspace_id}/articles/{article_id}",
     response_model=StandardResponse[ArticleResponse],
 )
-async def update_article_content(
+async def update_article(
     workspace_id: str = Path(...),
     article_id: str = Path(...),
-    body: UpdateArticleContentRequest = Body(...),
+    body: UpdateArticleRequest = Body(...),
     current_user: User = Depends(get_current_user),
-    uc=Depends(get_uc_update_article_content),
+    uc=Depends(get_uc_update_article),
 ):
     article = await uc.execute(
         workspace_id=workspace_id,
         article_id=article_id,
-        content=body.content,
         caller=current_user,
+        name=body.name,
+        product=body.product,
+        on_air_date=body.on_air_date,
+        content=body.content,
     )
     return create_success_response(ArticleResponse.from_model(article))
 
@@ -177,22 +181,6 @@ async def submit_article(
     article_id: str = Path(...),
     current_user: User = Depends(get_current_user),
     uc=Depends(get_uc_submit_article),
-):
-    article = await uc.execute(
-        workspace_id=workspace_id, article_id=article_id, caller=current_user
-    )
-    return create_success_response(ArticleResponse.from_model(article))
-
-
-@router.post(
-    "/{workspace_id}/articles/{article_id}/start-review",
-    response_model=StandardResponse[ArticleResponse],
-)
-async def start_review_article(
-    workspace_id: str = Path(...),
-    article_id: str = Path(...),
-    current_user: User = Depends(require_permissions(Permission.WORKSPACES_REVIEW)),
-    uc=Depends(get_uc_start_review_article),
 ):
     article = await uc.execute(
         workspace_id=workspace_id, article_id=article_id, caller=current_user
@@ -225,6 +213,22 @@ async def reject_article(
     article_id: str = Path(...),
     current_user: User = Depends(require_permissions(Permission.WORKSPACES_REVIEW)),
     uc=Depends(get_uc_reject_article),
+):
+    article = await uc.execute(
+        workspace_id=workspace_id, article_id=article_id, caller=current_user
+    )
+    return create_success_response(ArticleResponse.from_model(article))
+
+
+@router.post(
+    "/{workspace_id}/articles/{article_id}/feedback",
+    response_model=StandardResponse[ArticleResponse],
+)
+async def provide_feedback_article(
+    workspace_id: str = Path(...),
+    article_id: str = Path(...),
+    current_user: User = Depends(require_permissions(Permission.WORKSPACES_REVIEW)),
+    uc=Depends(get_uc_provide_feedback_article),
 ):
     article = await uc.execute(
         workspace_id=workspace_id, article_id=article_id, caller=current_user

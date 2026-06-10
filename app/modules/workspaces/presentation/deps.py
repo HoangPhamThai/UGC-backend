@@ -19,14 +19,12 @@ from app.modules.workspaces.domain.usecases.get_workspace import GetWorkspaceUse
 from app.modules.workspaces.domain.usecases.list_workspaces import (
     ListWorkspacesUseCase,
 )
+from app.modules.workspaces.domain.usecases.provide_feedback_article import (
+    ProvideFeedbackArticleUseCase,
+)
 from app.modules.workspaces.domain.usecases.reject_article import RejectArticleUseCase
-from app.modules.workspaces.domain.usecases.start_review_article import (
-    StartReviewArticleUseCase,
-)
 from app.modules.workspaces.domain.usecases.submit_article import SubmitArticleUseCase
-from app.modules.workspaces.domain.usecases.update_article_content import (
-    UpdateArticleContentUseCase,
-)
+from app.modules.workspaces.domain.usecases.update_article import UpdateArticleUseCase
 
 
 @lru_cache(maxsize=1)
@@ -75,8 +73,8 @@ def get_uc_delete_article() -> DeleteArticleUseCase:
     )
 
 
-def get_uc_update_article_content() -> UpdateArticleContentUseCase:
-    return UpdateArticleContentUseCase(
+def get_uc_update_article() -> UpdateArticleUseCase:
+    return UpdateArticleUseCase(
         workspace_repo=get_workspace_repo(),
         article_repo=get_article_repo(),
     )
@@ -89,13 +87,13 @@ def get_uc_submit_article() -> SubmitArticleUseCase:
     )
 
 
-def get_uc_start_review_article() -> StartReviewArticleUseCase:
-    return StartReviewArticleUseCase(article_repo=get_article_repo())
-
-
 def get_uc_approve_article() -> ApproveArticleUseCase:
     return ApproveArticleUseCase(article_repo=get_article_repo())
 
 
 def get_uc_reject_article() -> RejectArticleUseCase:
     return RejectArticleUseCase(article_repo=get_article_repo())
+
+
+def get_uc_provide_feedback_article() -> ProvideFeedbackArticleUseCase:
+    return ProvideFeedbackArticleUseCase(article_repo=get_article_repo())
