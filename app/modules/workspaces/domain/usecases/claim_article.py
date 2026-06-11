@@ -3,8 +3,8 @@ from dataclasses import dataclass
 
 from app.core.logging_mixin import LoggerMixin
 from app.modules.users.data.model import User
-from app.modules.workspaces.data.model import Article, ArticleEvent, ArticleEventType
-from app.modules.workspaces.domain.errors import ArticleNotFoundError, ClaimConflictError
+from app.modules.workspaces.data.model import Article, ArticleEvent, ArticleEventType, AWAITING_QC_STATUSES
+from app.modules.workspaces.domain.errors import ArticleNotFoundError, ArticleStateConflictError, ClaimConflictError
 from app.modules.workspaces.domain.repo import ArticleEventRepo, ArticleRepo
 from app.modules.workspaces.domain.usecases._review_guard import ensure_qc_scope
 
@@ -19,6 +19,9 @@ class ClaimArticleUseCase(LoggerMixin):
         if article is None or article.workspace_id != workspace_id:
             raise ArticleNotFoundError()
         ensure_qc_scope(article, caller)
+
+        if article.status not in AWAITING_QC_STATUSES:
+            raise ArticleStateConflictError("Article is not awaiting review")
 
         claimed = await self.article_repo.claim(article_id, caller.id)
         if claimed is None:

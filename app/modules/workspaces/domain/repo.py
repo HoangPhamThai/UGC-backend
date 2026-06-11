@@ -120,6 +120,13 @@ class ArticleRepo(ABC):
         ...
 
     @abstractmethod
+    async def withdraw(self, article_id: str, *, actor_id: str) -> Optional[Article]:
+        """Atomically flip submitted -> not_submitted only if currently SUBMITTED
+        AND unclaimed (claimed_by is null). Sets last_activity. Returns the updated
+        Article, or None if the precondition no longer holds (lost to a concurrent claim)."""
+        ...
+
+    @abstractmethod
     async def touch_activity(self, article_id: str, *, actor_id: str) -> None:
         """Set last_activity_by/last_activity_at = (actor_id, now). No status change."""
         ...

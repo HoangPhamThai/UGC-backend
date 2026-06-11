@@ -33,13 +33,10 @@ class WithdrawArticleUseCase(LoggerMixin):
         if article.claimed_by is not None:
             raise ClaimConflictError("A reviewer has already started; cannot withdraw")
 
-        updated = await self.article_repo.update_status(
-            article_id,
-            status=ArticleStatus.NOT_SUBMITTED,
-            last_activity_by=caller.id,
-        )
+        updated = await self.article_repo.withdraw(article_id, actor_id=caller.id)
         if updated is None:
-            raise ArticleNotFoundError()
+            # Lost the race to a concurrent claim after our checks passed.
+            raise ClaimConflictError("A reviewer has already started; cannot withdraw")
         await self.event_repo.create(
             ArticleEvent(article_id=article_id, actor_id=caller.id, type=ArticleEventType.WITHDRAWN)
         )

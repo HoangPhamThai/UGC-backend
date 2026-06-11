@@ -88,6 +88,15 @@ class FakeArticleRepo(ArticleRepo):
         a.claimed_at = _now()
         return a
 
+    async def withdraw(self, article_id, *, actor_id):
+        a = self.items.get(article_id)
+        if a is None or a.status != ArticleStatus.SUBMITTED or a.claimed_by is not None:
+            return None
+        a.status = ArticleStatus.NOT_SUBMITTED
+        a.last_activity_by = actor_id
+        a.last_activity_at = _now()
+        return a
+
     async def touch_activity(self, article_id, *, actor_id):
         a = self.items.get(article_id)
         if a is not None:

@@ -10,9 +10,8 @@ from tests.conftest import (
     FakeArticleEventRepo,
     FakeArticleRepo,
     make_article,
-    make_user,
 )
-from app.modules.users.data.model import Product, UserRole
+from app.modules.users.data.model import Product
 
 
 async def test_claim_sets_owner_and_logs_event(qc):
@@ -43,4 +42,15 @@ async def test_claim_out_of_product_scope_is_404(qc):
         article_repo=FakeArticleRepo([art]), event_repo=FakeArticleEventRepo()
     )
     with pytest.raises(ArticleNotFoundError):
+        await uc.execute(workspace_id="ws_1", article_id="art_1", caller=qc)
+
+
+async def test_claim_non_awaiting_article_raises_state_conflict(qc):
+    from app.modules.workspaces.data.model import ArticleStatus
+    from app.modules.workspaces.domain.errors import ArticleStateConflictError
+    art = make_article(status=ArticleStatus.APPROVED, claimed_by=None)
+    uc = ClaimArticleUseCase(
+        article_repo=FakeArticleRepo([art]), event_repo=FakeArticleEventRepo()
+    )
+    with pytest.raises(ArticleStateConflictError):
         await uc.execute(workspace_id="ws_1", article_id="art_1", caller=qc)
