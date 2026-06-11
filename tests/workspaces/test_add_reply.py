@@ -9,7 +9,7 @@ from app.modules.workspaces.data.model import (
     FeedbackStatus,
     Workspace,
 )
-from app.modules.workspaces.domain.errors import FeedbackNotFoundError, ArticleNotFoundError
+from app.modules.workspaces.domain.errors import ClaimConflictError, FeedbackNotFoundError, ArticleNotFoundError
 from app.modules.workspaces.domain.usecases.add_reply import AddReplyUseCase
 from tests.conftest import (
     FakeArticleEventRepo,
@@ -82,3 +82,32 @@ async def test_reply_to_missing_feedback_is_404(qc):
             workspace_id="ws_1", article_id="art_1", feedback_id="nope",
             body="x", caller=qc,
         )
+
+
+async def test_non_claiming_qc_cannot_reply(qc):
+    art = make_article(status=ArticleStatus.FEEDBACK_PROVIDED, claimed_by="u_other_qc")
+    uc = AddReplyUseCase(
+        workspace_repo=FakeWorkspaceRepo([_ws()]),
+        article_repo=FakeArticleRepo([art]),
+        feedback_repo=FakeFeedbackRepo([_fb()]),
+        event_repo=FakeArticleEventRepo(),
+    )
+    with pytest.raises(ClaimConflictError):
+        await uc.execute(workspace_id="ws_1", article_id="art_1",
+                         feedback_id="fb_1", body="x", caller=qc)
+
+
+async def test_non_owner_creator_cannot_reply():
+    from app.modules.users.data.model import UserRole
+    from tests.conftest import make_user
+    art = make_article(status=ArticleStatus.FEEDBACK_PROVIDED, claimed_by="u_qc")
+    intruder = make_user(role=UserRole.CREATOR, uid="u_intruder")
+    uc = AddReplyUseCase(
+        workspace_repo=FakeWorkspaceRepo([_ws()]),
+        article_repo=FakeArticleRepo([art]),
+        feedback_repo=FakeFeedbackRepo([_fb()]),
+        event_repo=FakeArticleEventRepo(),
+    )
+    with pytest.raises(ArticleNotFoundError):
+        await uc.execute(workspace_id="ws_1", article_id="art_1",
+                         feedback_id="fb_1", body="x", caller=intruder)

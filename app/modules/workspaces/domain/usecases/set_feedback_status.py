@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from app.core.logging_mixin import LoggerMixin
 from app.modules.users.data.model import User
 from app.modules.workspaces.data.model import (
+    AWAITING_QC_STATUSES,
     ArticleEvent,
     ArticleEventType,
     Feedback,
@@ -11,6 +12,7 @@ from app.modules.workspaces.data.model import (
 )
 from app.modules.workspaces.domain.errors import (
     ArticleNotFoundError,
+    ArticleStateConflictError,
     FeedbackNotFoundError,
     FeedbackStateConflictError,
 )
@@ -44,6 +46,11 @@ class SetFeedbackStatusUseCase(LoggerMixin):
             raise ArticleNotFoundError()
         ensure_qc_scope(article, caller)
         ensure_claimed_by_caller(article, caller)
+
+        if article.status not in AWAITING_QC_STATUSES:
+            raise ArticleStateConflictError(
+                "Feedback status can only be changed during an active review session"
+            )
 
         feedback = await self.feedback_repo.get_by_id(feedback_id)
         if feedback is None or feedback.article_id != article_id:

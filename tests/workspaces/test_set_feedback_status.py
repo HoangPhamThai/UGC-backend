@@ -9,6 +9,7 @@ from app.modules.workspaces.data.model import (
     FeedbackStatus,
 )
 from app.modules.workspaces.domain.errors import (
+    ArticleStateConflictError,
     ClaimConflictError,
     FeedbackNotFoundError,
     FeedbackStateConflictError,
@@ -91,3 +92,34 @@ async def test_missing_feedback_is_404(qc):
             workspace_id="ws_1", article_id="art_1", feedback_id="nope",
             target=FeedbackStatus.RESOLVED, caller=qc,
         )
+
+
+async def test_dismiss_open_feedback(qc):
+    arepo, frepo, events = _ctx(FeedbackStatus.OPEN)
+    uc = SetFeedbackStatusUseCase(article_repo=arepo, feedback_repo=frepo, event_repo=events)
+    fb = await uc.execute(workspace_id="ws_1", article_id="art_1",
+                          feedback_id="fb_1", target=FeedbackStatus.DISMISSED, caller=qc)
+    assert fb.status == FeedbackStatus.DISMISSED
+    assert events.events[-1].type == ArticleEventType.FEEDBACK_DISMISSED
+
+
+async def test_reopen_dismissed_feedback(qc):
+    arepo, frepo, events = _ctx(FeedbackStatus.DISMISSED)
+    uc = SetFeedbackStatusUseCase(article_repo=arepo, feedback_repo=frepo, event_repo=events)
+    fb = await uc.execute(workspace_id="ws_1", article_id="art_1",
+                          feedback_id="fb_1", target=FeedbackStatus.OPEN, caller=qc)
+    assert fb.status == FeedbackStatus.OPEN
+    assert events.events[-1].type == ArticleEventType.FEEDBACK_REOPENED
+
+
+async def test_cannot_change_status_outside_review_session(qc):
+    # article in creator's turn (feedback_provided) -> state conflict
+    from app.modules.workspaces.data.model import ArticleStatus
+    art = make_article(status=ArticleStatus.FEEDBACK_PROVIDED, claimed_by="u_qc")
+    frepo = FakeFeedbackRepo([_fb(FeedbackStatus.OPEN)])
+    uc = SetFeedbackStatusUseCase(
+        article_repo=FakeArticleRepo([art]), feedback_repo=frepo, event_repo=FakeArticleEventRepo()
+    )
+    with pytest.raises(ArticleStateConflictError):
+        await uc.execute(workspace_id="ws_1", article_id="art_1",
+                         feedback_id="fb_1", target=FeedbackStatus.RESOLVED, caller=qc)
