@@ -43,3 +43,24 @@ class QcMisconfiguredError(WorkspaceError):
 
     def __init__(self, message: str = "QC user has no qc_products assigned") -> None:
         super().__init__(message)
+
+
+class ClaimConflictError(WorkspaceError):
+    """Article is already claimed by another QC, or the caller acted without claiming. Maps to 409."""
+
+    def __init__(self, message: str = "Article is claimed by another reviewer") -> None:
+        super().__init__(message)
+
+
+class FeedbackNotFoundError(WorkspaceError):
+    """Feedback does not exist or is out of the caller's scope. Maps to 404."""
+
+    def __init__(self, message: str = "Feedback not found") -> None:
+        super().__init__(message)
+
+
+class FeedbackStateConflictError(WorkspaceError):
+    """Feedback is not in a state that allows this operation. Maps to 409."""
+
+    def __init__(self, message: str = "Feedback is not in a valid state for this operation") -> None:
+        super().__init__(message)
