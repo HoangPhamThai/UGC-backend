@@ -8,6 +8,7 @@ from app.modules.workspaces.data.model import (
     Article,
     ArticleEvent,
     ArticleStatus,
+    AWAITING_QC_STATUSES,
     Feedback,
     FeedbackReply,
     FeedbackStatus,
@@ -82,7 +83,7 @@ class FakeArticleRepo(ArticleRepo):
 
     async def claim(self, article_id, qc_user_id):
         a = self.items.get(article_id)
-        if a is None or a.claimed_by is not None:
+        if a is None or a.claimed_by is not None or a.status not in AWAITING_QC_STATUSES:
             return None
         a.claimed_by = qc_user_id
         a.claimed_at = _now()

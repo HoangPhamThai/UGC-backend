@@ -5,6 +5,7 @@ from app.core.auth import get_current_user
 from app.core.model import StandardResponse, create_success_response
 from app.core.permissions import Permission, require_permissions
 from app.modules.users.data.model import User
+from app.modules.workspaces.data.model import FeedbackAnchor
 from app.modules.workspaces.presentation.deps import (
     get_uc_add_reply,
     get_uc_approve_article,
@@ -271,7 +272,6 @@ async def create_feedback(
     current_user: User = Depends(require_permissions(Permission.ARTICLES_REVIEW)),
     uc=Depends(get_uc_create_feedback),
 ):
-    from app.modules.workspaces.data.model import FeedbackAnchor
     anchor = FeedbackAnchor(**body.anchor.model_dump())
     fb = await uc.execute(
         workspace_id=workspace_id, article_id=article_id, caller=current_user,

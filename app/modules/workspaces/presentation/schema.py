@@ -1,6 +1,6 @@
 # app/modules/workspaces/presentation/schema.py
 from datetime import date, datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -149,7 +149,7 @@ class CreateFeedbackRequest(BaseModel):
 
 
 class SetFeedbackStatusRequest(BaseModel):
-    status: FeedbackStatus  # resolved / dismissed / open (reopen)
+    status: Literal[FeedbackStatus.OPEN, FeedbackStatus.RESOLVED, FeedbackStatus.DISMISSED]
 
 
 class AddReplyRequest(BaseModel):
@@ -184,7 +184,8 @@ class FeedbackResponse(BaseModel):
     status: FeedbackStatus
     anchor: AnchorRequest
     replies: list[ReplyResponse]
-    resolved_by: Optional[str]
+    resolved_by: Optional[str] = None
+    resolved_at: Optional[int] = None
     created_at: int
     updated_at: int
 
@@ -201,6 +202,7 @@ class FeedbackResponse(BaseModel):
             ),
             replies=[ReplyResponse.from_model(r) for r in f.replies],
             resolved_by=f.resolved_by,
+            resolved_at=_to_epoch_ms(f.resolved_at) if f.resolved_at else None,
             created_at=_to_epoch_ms(f.created_at),
             updated_at=_to_epoch_ms(f.updated_at),
         )

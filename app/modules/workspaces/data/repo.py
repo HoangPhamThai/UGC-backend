@@ -12,6 +12,7 @@ from app.modules.workspaces.data.model import (
     Article,
     ArticleEvent,
     ArticleStatus,
+    AWAITING_QC_STATUSES,
     Feedback,
     FeedbackReply,
     FeedbackStatus,
@@ -306,9 +307,17 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
     async def claim(self, article_id: str, qc_user_id: str) -> Optional[Article]:
         coll = await self._get_collection()
         now = datetime.now(timezone.utc)
-        # Conditional update: only claim when currently unclaimed.
+        # Conditional update: only claim when currently unclaimed AND awaiting QC.
+        # The status guard closes the TOCTOU window where a concurrent withdraw
+        # could flip the article to not_submitted between the use-case read and
+        # this update, which would otherwise leave a stale claim on a non-review
+        # article that persists across resubmit.
         doc = await coll.find_one_and_update(
-            {"_id": article_id, "claimed_by": None},
+            {
+                "_id": article_id,
+                "claimed_by": None,
+                "status": {"$in": [s.value for s in AWAITING_QC_STATUSES]},
+            },
             {"$set": {"claimed_by": qc_user_id, "claimed_at": now, "updated_at": now}},
             return_document=ReturnDocument.AFTER,
         )
