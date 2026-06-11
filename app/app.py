@@ -24,6 +24,8 @@ from app.modules.users.presentation.routes import router as users_router
 from app.modules.workspaces.data.model import Product
 from app.modules.workspaces.data.repo import (
     ArticleDataRepository,
+    ArticleEventDataRepository,
+    FeedbackDataRepository,
     WorkspaceDataRepository,
 )
 from app.modules.workspaces.presentation.routes import router as workspaces_router
@@ -43,6 +45,8 @@ async def lifespan(app: FastAPI):
     # Ensure workspaces indexes
     await WorkspaceDataRepository().ensure_indexes()
     await ArticleDataRepository().ensure_indexes()
+    await FeedbackDataRepository().ensure_indexes()
+    await ArticleEventDataRepository().ensure_indexes()
 
     # Bootstrap default accounts
     user_repo = UserDataRepository()
