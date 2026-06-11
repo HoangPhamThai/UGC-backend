@@ -1,9 +1,18 @@
 # app/modules/workspaces/domain/repo.py
 from abc import ABC, abstractmethod
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
-from app.modules.workspaces.data.model import Article, ArticleStatus, Product, Workspace
+from app.modules.workspaces.data.model import (
+    Article,
+    ArticleEvent,
+    ArticleStatus,
+    Feedback,
+    FeedbackReply,
+    FeedbackStatus,
+    Product,
+    Workspace,
+)
 
 
 class WorkspaceRepo(ABC):
@@ -100,10 +109,76 @@ class ArticleRepo(ABC):
         status: ArticleStatus,
         reviewer_user_id: Optional[str] = None,
         set_reviewed_at: bool = False,
+        last_activity_by: Optional[str] = None,
+        increment_review_round: bool = False,
     ) -> Optional[Article]: ...
+
+    @abstractmethod
+    async def claim(self, article_id: str, qc_user_id: str) -> Optional[Article]:
+        """Atomically set claimed_by/claimed_at only if currently unclaimed.
+        Returns the updated Article, or None if not found OR already claimed."""
+        ...
+
+    @abstractmethod
+    async def touch_activity(self, article_id: str, *, actor_id: str) -> None:
+        """Set last_activity_by/last_activity_at = (actor_id, now). No status change."""
+        ...
+
+    @abstractmethod
+    async def reject(
+        self, article_id: str, *, reviewer_user_id: str, reason: str
+    ) -> Optional[Article]:
+        """Set status=rejected and all reject bookkeeping fields atomically."""
+        ...
 
     @abstractmethod
     async def delete(self, article_id: str) -> None: ...
 
     @abstractmethod
     async def delete_by_workspace(self, workspace_id: str) -> int: ...
+
+
+class FeedbackRepo(ABC):
+
+    @abstractmethod
+    async def create(self, feedback: Feedback) -> Feedback: ...
+
+    @abstractmethod
+    async def get_by_id(self, feedback_id: str) -> Optional[Feedback]: ...
+
+    @abstractmethod
+    async def list_by_article(
+        self, article_id: str, *, statuses: Optional[list[FeedbackStatus]] = None
+    ) -> list[Feedback]: ...
+
+    @abstractmethod
+    async def set_status(
+        self,
+        feedback_id: str,
+        *,
+        status: FeedbackStatus,
+        resolved_by: Optional[str] = None,
+        set_resolved_at: bool = False,
+        clear_resolved: bool = False,
+    ) -> Optional[Feedback]:
+        """Update a feedback's status. `clear_resolved` wipes resolved_by/at (used on reopen)."""
+        ...
+
+    @abstractmethod
+    async def mark_drafts_open(self, article_id: str) -> int:
+        """Flip every DRAFT feedback of the article to OPEN. Returns count flipped."""
+        ...
+
+    @abstractmethod
+    async def add_reply(self, feedback_id: str, reply: FeedbackReply) -> Optional[Feedback]: ...
+
+    @abstractmethod
+    async def count_open(self, article_id: str) -> int:
+        """Number of feedbacks in OPEN status for the article."""
+        ...
+
+
+class ArticleEventRepo(ABC):
+
+    @abstractmethod
+    async def create(self, event: ArticleEvent) -> ArticleEvent: ...
