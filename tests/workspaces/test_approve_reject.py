@@ -48,6 +48,7 @@ async def test_approve_succeeds_with_no_open_feedback(qc):
     result = await uc.execute(workspace_id="ws_1", article_id="art_1", caller=qc)
     assert result.status == ArticleStatus.APPROVED
     assert events.events[-1].type == ArticleEventType.APPROVED
+    assert result.reviewer_user_id == qc.id
 
 
 async def test_approve_requires_claim(qc):
@@ -87,4 +88,24 @@ async def test_reject_requires_claim(qc):
     art = make_article(status=ArticleStatus.SUBMITTED, claimed_by=None)
     uc = RejectArticleUseCase(article_repo=FakeArticleRepo([art]), event_repo=FakeArticleEventRepo())
     with pytest.raises(ClaimConflictError):
+        await uc.execute(workspace_id="ws_1", article_id="art_1", caller=qc, reason="x")
+
+
+async def test_approve_wrong_state_raises(qc):
+    art = make_article(status=ArticleStatus.APPROVED, claimed_by="u_qc")
+    uc = ApproveArticleUseCase(
+        article_repo=FakeArticleRepo([art]),
+        feedback_repo=FakeFeedbackRepo([]),
+        event_repo=FakeArticleEventRepo(),
+    )
+    with pytest.raises(ArticleStateConflictError):
+        await uc.execute(workspace_id="ws_1", article_id="art_1", caller=qc)
+
+
+async def test_reject_wrong_state_raises(qc):
+    art = make_article(status=ArticleStatus.REJECTED, claimed_by="u_qc")
+    uc = RejectArticleUseCase(
+        article_repo=FakeArticleRepo([art]), event_repo=FakeArticleEventRepo()
+    )
+    with pytest.raises(ArticleStateConflictError):
         await uc.execute(workspace_id="ws_1", article_id="art_1", caller=qc, reason="x")

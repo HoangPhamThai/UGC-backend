@@ -9,6 +9,7 @@ from app.modules.workspaces.data.model import (
     ArticleEvent,
     ArticleEventType,
     ArticleStatus,
+    FeedbackStatus,
 )
 from app.modules.workspaces.domain.errors import ArticleNotFoundError, ArticleStateConflictError
 from app.modules.workspaces.domain.repo import ArticleEventRepo, ArticleRepo, FeedbackRepo
@@ -36,6 +37,14 @@ class ApproveArticleUseCase(LoggerMixin):
         if await self.feedback_repo.count_open(article_id) > 0:
             raise ArticleStateConflictError(
                 "Cannot approve while feedback is still open"
+            )
+
+        drafts = await self.feedback_repo.list_by_article(
+            article_id, statuses=[FeedbackStatus.DRAFT]
+        )
+        if drafts:
+            self.log_warning(
+                f"Approving article {article_id} with {len(drafts)} unpublished draft feedback(s) — they will be orphaned"
             )
 
         updated = await self.article_repo.update_status(
