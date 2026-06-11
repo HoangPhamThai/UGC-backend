@@ -170,24 +170,23 @@ class FakeArticleEventRepo(ArticleEventRepo):
 # --- Builders / fixtures ---
 
 def make_user(role=UserRole.QC, products=None, uid="u_qc") -> User:
-    qc_products = products if role == UserRole.QC else []
-    if role == UserRole.QC and qc_products is None:
-        qc_products = [Product.CL]
+    if role == UserRole.QC:
+        qc_products = products if products is not None else [Product.CL]
+    else:
+        qc_products = []
     return User(
         id=uid, email=f"{uid}@x.com", password_hashed="x", role=role,
-        qc_products=qc_products or ([Product.CL] if role == UserRole.QC else []),
+        qc_products=qc_products,
     )
 
 
 def make_article(*, status=ArticleStatus.SUBMITTED, product=Product.CL,
                  workspace_id="ws_1", claimed_by=None, aid="art_1") -> Article:
-    a = Article(
+    return Article(
         id=aid, workspace_id=workspace_id, name="A", product=product,
         content="<p>hello world</p>", on_air_date=date.today() + timedelta(days=7),
-        status=status,
+        status=status, claimed_by=claimed_by,
     )
-    a.claimed_by = claimed_by
-    return a
 
 
 @pytest.fixture
