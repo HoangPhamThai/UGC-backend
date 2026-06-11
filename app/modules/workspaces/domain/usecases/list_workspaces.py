@@ -36,16 +36,16 @@ class ListWorkspacesUseCase(LoggerMixin):
             return ListWorkspacesResult(workspaces, total, counts, products)
 
         if has_permission(caller, Permission.WORKSPACES_READ_BY_PRODUCT):
-            if caller.qc_product is None:
+            if not caller.qc_products:
                 raise QcMisconfiguredError()
-            p = caller.qc_product
-            workspaces = await repo.list_with_product(p, skip=skip, limit=limit)
-            total = await repo.count_with_product(p)
+            ps = caller.qc_products
+            workspaces = await repo.list_with_products(ps, skip=skip, limit=limit)
+            total = await repo.count_with_products(ps)
             ids = [w.id for w in workspaces]
-            # QC sees only their product, so the count must be filtered;
+            # QC sees only their assigned products, so the count must be filtered;
             # the denormalized total on the workspace doc isn't usable here.
-            counts = await repo.article_counts(ids, product=p)
-            products = {wid: [p] for wid in ids}
+            counts = await repo.article_counts(ids, products=ps)
+            products = await repo.products_for(ids, restrict=ps)
             return ListWorkspacesResult(workspaces, total, counts, products)
 
         # Creator (default): own workspaces only.

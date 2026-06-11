@@ -40,7 +40,7 @@ def _to_response(user: User) -> ManagedUserResponse:
         id=user.id,
         email=user.email,
         role=user.role,
-        qc_product=user.qc_product,
+        qc_products=user.qc_products,
         is_active=user.is_active,
         created_at=user.created_at,
     )
@@ -67,7 +67,7 @@ async def create_managed_user(
             email=body.email,
             password=body.password,
             role=body.role,
-            qc_product=body.qc_product,
+            qc_products=body.qc_products,
         )
         return create_success_response(_to_response(user), "User created")
     except ValueError as e:
@@ -169,16 +169,16 @@ async def update_user(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions",
             )
-        # Detect whether qc_product was explicitly present in the request body
+        # Detect whether qc_products was explicitly present in the request body
         # (`exclude_unset=True` returns the dict keys the client actually sent).
-        qc_provided = "qc_product" in body.model_dump(exclude_unset=True)
+        qc_provided = "qc_products" in body.model_dump(exclude_unset=True)
         try:
             updated = await uc_update.execute(
                 user_id=user_id,
                 is_active=body.is_active,
                 password=body.password,
-                qc_product=body.qc_product,
-                qc_product_provided=qc_provided,
+                qc_products=body.qc_products,
+                qc_products_provided=qc_provided,
             )
         except ValueError as ve:
             raise HTTPException(

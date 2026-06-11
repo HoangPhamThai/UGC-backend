@@ -13,12 +13,15 @@ from app.core.settings import settings
 from app.middlewares import setup_middleware
 from app.modules.admin.presentation.routes import router as admin_router
 from app.modules.auth.presentation.routes import router as auth_router
+from app.modules.users.data.model import UserRole
 from app.modules.users.data.repo import UserDataRepository
-from app.modules.users.domain.usecases.bootstrap_superuser import (
-    BootstrapSuperuserUseCase,
+from app.modules.users.domain.usecases.bootstrap_default_accounts import (
+    BootstrapDefaultAccountsUseCase,
+    DefaultAccount,
 )
 from app.modules.users.domain.usecases.create_user import CreateUserUseCase
 from app.modules.users.presentation.routes import router as users_router
+from app.modules.workspaces.data.model import Product
 from app.modules.workspaces.data.repo import (
     ArticleDataRepository,
     WorkspaceDataRepository,
@@ -41,15 +44,37 @@ async def lifespan(app: FastAPI):
     await WorkspaceDataRepository().ensure_indexes()
     await ArticleDataRepository().ensure_indexes()
 
-    # Bootstrap superuser
+    # Bootstrap default accounts
     user_repo = UserDataRepository()
-    bootstrap = BootstrapSuperuserUseCase(
+    bootstrap = BootstrapDefaultAccountsUseCase(
         user_repo=user_repo,
         uc_create_user=CreateUserUseCase(user_repo=user_repo),
     )
     await bootstrap.execute(
-        email=settings.superuser_email,
-        password=settings.superuser_password,
+        [
+            DefaultAccount(
+                email=settings.superuser_email,
+                password=settings.superuser_password,
+                role=UserRole.SUPERUSER,
+            ),
+            DefaultAccount(
+                email=settings.creator_email,
+                password=settings.creator_password,
+                role=UserRole.CREATOR,
+            ),
+            DefaultAccount(
+                email=settings.qc_email,
+                password=settings.qc_password,
+                role=UserRole.QC,
+                qc_products=[
+                    Product(code.strip())
+                    for code in settings.qc_products.split(",")
+                    if code.strip()
+                ]
+                if settings.qc_products
+                else None,
+            ),
+        ]
     )
 
     yield

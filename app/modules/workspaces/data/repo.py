@@ -75,14 +75,16 @@ class WorkspaceDataRepository(LoggerMixin, WorkspaceRepo):
         return await coll.count_documents({})
 
     @override
-    async def list_with_product(
-        self, product: Product, *, skip: int, limit: int
+    async def list_with_products(
+        self, products: list[Product], *, skip: int, limit: int
     ) -> list[Workspace]:
-        # Find workspace ids that have at least one article of `product`.
+        # Find workspace ids that have at least one article of any `products`.
+        if not products:
+            return []
         db = await get_db()
         article_coll = db[Article.Config.collection_name]
         ids = await article_coll.distinct(
-            "workspace_id", {"product": product.value}
+            "workspace_id", {"product": {"$in": [p.value for p in products]}}
         )
         if not ids:
             return []
@@ -97,11 +99,13 @@ class WorkspaceDataRepository(LoggerMixin, WorkspaceRepo):
         return [Workspace.model_validate(d) for d in docs]
 
     @override
-    async def count_with_product(self, product: Product) -> int:
+    async def count_with_products(self, products: list[Product]) -> int:
+        if not products:
+            return 0
         db = await get_db()
         article_coll = db[Article.Config.collection_name]
         ids = await article_coll.distinct(
-            "workspace_id", {"product": product.value}
+            "workspace_id", {"product": {"$in": [p.value for p in products]}}
         )
         return len(ids)
 
@@ -124,15 +128,15 @@ class WorkspaceDataRepository(LoggerMixin, WorkspaceRepo):
 
     @override
     async def article_counts(
-        self, workspace_ids: list[str], *, product: Optional[Product] = None
+        self, workspace_ids: list[str], *, products: Optional[list[Product]] = None
     ) -> dict[str, int]:
         if not workspace_ids:
             return {}
         db = await get_db()
         article_coll = db[Article.Config.collection_name]
         match: dict = {"workspace_id": {"$in": workspace_ids}}
-        if product is not None:
-            match["product"] = product.value
+        if products is not None:
+            match["product"] = {"$in": [p.value for p in products]}
         pipeline = [
             {"$match": match},
             {"$group": {"_id": "$workspace_id", "c": {"$sum": 1}}},
@@ -144,13 +148,18 @@ class WorkspaceDataRepository(LoggerMixin, WorkspaceRepo):
         return result
 
     @override
-    async def products_for(self, workspace_ids: list[str]) -> dict[str, list[Product]]:
+    async def products_for(
+        self, workspace_ids: list[str], *, restrict: Optional[list[Product]] = None
+    ) -> dict[str, list[Product]]:
         if not workspace_ids:
             return {}
         db = await get_db()
         article_coll = db[Article.Config.collection_name]
+        match: dict = {"workspace_id": {"$in": workspace_ids}}
+        if restrict is not None:
+            match["product"] = {"$in": [p.value for p in restrict]}
         pipeline = [
-            {"$match": {"workspace_id": {"$in": workspace_ids}}},
+            {"$match": match},
             {"$group": {"_id": "$workspace_id", "products": {"$addToSet": "$product"}}},
         ]
         result: dict[str, list[Product]] = {wid: [] for wid in workspace_ids}
@@ -197,21 +206,28 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
 
     @override
     async def list_by_workspace(
-        self, workspace_id: str, *, product: Optional[Product] = None
+        self, workspace_id: str, *, products: Optional[list[Product]] = None
     ) -> list[Article]:
         coll = await self._get_collection()
         filt: dict = {"workspace_id": workspace_id}
-        if product is not None:
-            filt["product"] = product.value
+        if products is not None:
+            filt["product"] = {"$in": [p.value for p in products]}
         cursor = coll.find(filt).sort("created_at", ASCENDING)
         docs = [doc async for doc in cursor]
         return [Article.model_validate(d) for d in docs]
 
     @override
-    async def workspace_has_product(self, workspace_id: str, product: Product) -> bool:
+    async def workspace_has_any_product(
+        self, workspace_id: str, products: list[Product]
+    ) -> bool:
+        if not products:
+            return False
         coll = await self._get_collection()
         doc = await coll.find_one(
-            {"workspace_id": workspace_id, "product": product.value},
+            {
+                "workspace_id": workspace_id,
+                "product": {"$in": [p.value for p in products]},
+            },
             projection={"_id": 1},
         )
         return doc is not None

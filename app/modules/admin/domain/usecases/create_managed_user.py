@@ -18,22 +18,22 @@ class CreateManagedUserUseCase(LoggerMixin):
         email: str,
         password: str,
         role: UserRole,
-        qc_product: Optional[Product] = None,
+        qc_products: Optional[list[Product]] = None,
     ) -> User:
         try:
             if role not in (UserRole.ADMIN, UserRole.QC):
                 raise ValueError(
                     f"Cannot create user with role '{role.value}' via this endpoint"
                 )
-            # The User model_validator already enforces the qc_product invariant,
+            # The User model_validator already enforces the qc_products invariant,
             # but raising here gives a cleaner error before hashing the password.
-            if role == UserRole.QC and qc_product is None:
-                raise ValueError("qc_product is required when role=qc")
-            if role != UserRole.QC and qc_product is not None:
-                raise ValueError("qc_product must be None when role is not qc")
+            if role == UserRole.QC and not qc_products:
+                raise ValueError("qc_products is required (non-empty) when role=qc")
+            if role != UserRole.QC and qc_products:
+                raise ValueError("qc_products must be empty when role is not qc")
 
             return await self.uc_create_user.execute(
-                email=email, password=password, role=role, qc_product=qc_product
+                email=email, password=password, role=role, qc_products=qc_products
             )
         except ValueError:
             raise

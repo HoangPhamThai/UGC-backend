@@ -41,19 +41,19 @@ class GetWorkspaceUseCase(LoggerMixin):
             products = self._distinct_products(articles)
             return GetWorkspaceResult(ws, articles, products)
 
-        # QC: scoped to their product.
+        # QC: scoped to their assigned products.
         if has_permission(caller, Permission.WORKSPACES_READ_BY_PRODUCT):
-            if caller.qc_product is None:
+            if not caller.qc_products:
                 raise QcMisconfiguredError()
-            if not await self.article_repo.workspace_has_product(
-                workspace_id, caller.qc_product
+            if not await self.article_repo.workspace_has_any_product(
+                workspace_id, caller.qc_products
             ):
                 # Workspace exists but is invisible to this QC.
                 raise WorkspaceNotFoundError()
             articles = await self.article_repo.list_by_workspace(
-                workspace_id, product=caller.qc_product
+                workspace_id, products=caller.qc_products
             )
-            return GetWorkspaceResult(ws, articles, [caller.qc_product])
+            return GetWorkspaceResult(ws, articles, self._distinct_products(articles))
 
         # Anyone else (e.g. another creator).
         raise WorkspaceNotFoundError()

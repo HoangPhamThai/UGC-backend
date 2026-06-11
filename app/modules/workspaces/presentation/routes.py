@@ -100,7 +100,7 @@ async def get_workspace(
 )
 async def delete_workspace(
     workspace_id: str = Path(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permissions(Permission.WORKSPACES_DELETE)),
     uc=Depends(get_uc_delete_workspace),
 ):
     await uc.execute(workspace_id=workspace_id, caller=current_user)
@@ -118,7 +118,7 @@ async def delete_workspace(
 async def create_article(
     workspace_id: str = Path(...),
     body: CreateArticleRequest = Body(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permissions(Permission.ARTICLES_CREATE)),
     uc=Depends(get_uc_create_article),
 ):
     article = await uc.execute(
@@ -140,7 +140,7 @@ async def create_article(
 async def delete_article(
     workspace_id: str = Path(...),
     article_id: str = Path(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permissions(Permission.ARTICLES_DELETE)),
     uc=Depends(get_uc_delete_article),
 ):
     await uc.execute(
@@ -157,7 +157,7 @@ async def update_article(
     workspace_id: str = Path(...),
     article_id: str = Path(...),
     body: UpdateArticleRequest = Body(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permissions(Permission.ARTICLES_UPDATE)),
     uc=Depends(get_uc_update_article),
 ):
     article = await uc.execute(
@@ -179,7 +179,7 @@ async def update_article(
 async def submit_article(
     workspace_id: str = Path(...),
     article_id: str = Path(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permissions(Permission.ARTICLES_SUBMIT)),
     uc=Depends(get_uc_submit_article),
 ):
     article = await uc.execute(
@@ -195,7 +195,7 @@ async def submit_article(
 async def approve_article(
     workspace_id: str = Path(...),
     article_id: str = Path(...),
-    current_user: User = Depends(require_permissions(Permission.WORKSPACES_REVIEW)),
+    current_user: User = Depends(require_permissions(Permission.ARTICLES_REVIEW)),
     uc=Depends(get_uc_approve_article),
 ):
     article = await uc.execute(
@@ -211,7 +211,7 @@ async def approve_article(
 async def reject_article(
     workspace_id: str = Path(...),
     article_id: str = Path(...),
-    current_user: User = Depends(require_permissions(Permission.WORKSPACES_REVIEW)),
+    current_user: User = Depends(require_permissions(Permission.ARTICLES_REVIEW)),
     uc=Depends(get_uc_reject_article),
 ):
     article = await uc.execute(
@@ -227,7 +227,7 @@ async def reject_article(
 async def provide_feedback_article(
     workspace_id: str = Path(...),
     article_id: str = Path(...),
-    current_user: User = Depends(require_permissions(Permission.WORKSPACES_REVIEW)),
+    current_user: User = Depends(require_permissions(Permission.ARTICLES_REVIEW)),
     uc=Depends(get_uc_provide_feedback_article),
 ):
     article = await uc.execute(

@@ -29,12 +29,12 @@ class WorkspaceRepo(ABC):
     async def count_all(self) -> int: ...
 
     @abstractmethod
-    async def list_with_product(
-        self, product: Product, *, skip: int, limit: int
+    async def list_with_products(
+        self, products: list[Product], *, skip: int, limit: int
     ) -> list[Workspace]: ...
 
     @abstractmethod
-    async def count_with_product(self, product: Product) -> int: ...
+    async def count_with_products(self, products: list[Product]) -> int: ...
 
     @abstractmethod
     async def delete(self, workspace_id: str) -> None: ...
@@ -46,11 +46,16 @@ class WorkspaceRepo(ABC):
 
     @abstractmethod
     async def article_counts(
-        self, workspace_ids: list[str], *, product: Optional[Product] = None
+        self, workspace_ids: list[str], *, products: Optional[list[Product]] = None
     ) -> dict[str, int]: ...
 
     @abstractmethod
-    async def products_for(self, workspace_ids: list[str]) -> dict[str, list[Product]]: ...
+    async def products_for(
+        self, workspace_ids: list[str], *, restrict: Optional[list[Product]] = None
+    ) -> dict[str, list[Product]]:
+        """Distinct products per workspace. When `restrict` is given, only those
+        products are considered (used to scope a QC to its assigned products)."""
+        ...
 
 
 class ArticleRepo(ABC):
@@ -63,11 +68,13 @@ class ArticleRepo(ABC):
 
     @abstractmethod
     async def list_by_workspace(
-        self, workspace_id: str, *, product: Optional[Product] = None
+        self, workspace_id: str, *, products: Optional[list[Product]] = None
     ) -> list[Article]: ...
 
     @abstractmethod
-    async def workspace_has_product(self, workspace_id: str, product: Product) -> bool: ...
+    async def workspace_has_any_product(
+        self, workspace_id: str, products: list[Product]
+    ) -> bool: ...
 
     @abstractmethod
     async def update_fields(

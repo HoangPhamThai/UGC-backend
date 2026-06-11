@@ -39,7 +39,7 @@ class InvalidInputError(WorkspaceError):
 
 
 class QcMisconfiguredError(WorkspaceError):
-    """A QC user reached workspaces code with no qc_product. Data-integrity error. Maps to 500."""
+    """A QC user reached workspaces code with no qc_products. Data-integrity error. Maps to 500."""
 
-    def __init__(self, message: str = "QC user has no qc_product assigned") -> None:
+    def __init__(self, message: str = "QC user has no qc_products assigned") -> None:
         super().__init__(message)

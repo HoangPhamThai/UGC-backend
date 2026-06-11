@@ -1,8 +1,7 @@
 # app/modules/users/presentation/schema.py
 from datetime import datetime
-from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.permissions import Permission
 from app.modules.users.data.model import UserRole
@@ -14,6 +13,6 @@ class UserMeResponse(BaseModel):
     email: str
     is_active: bool
     role: UserRole
-    qc_product: Optional[Product] = None
+    qc_products: list[Product] = Field(default_factory=list)
     permissions: list[Permission]
     created_at: datetime

@@ -19,14 +19,14 @@ class UpdateManagedUserUseCase(LoggerMixin):
         user_id: str,
         is_active: Optional[bool],
         password: Optional[str],
-        qc_product: Optional[Product] = None,
-        qc_product_provided: bool = False,
+        qc_products: Optional[list[Product]] = None,
+        qc_products_provided: bool = False,
     ) -> Optional[User]:
         """Update a managed user.
 
-        `qc_product_provided=True` means the caller explicitly sent the field
+        `qc_products_provided=True` means the caller explicitly sent the field
         (even if its value is None); only then do we touch it. This avoids
-        accidentally clearing qc_product when callers omit the field.
+        accidentally clearing qc_products when callers omit the field.
         """
         try:
             user = await self.user_repo.get_by_id(user_id)
@@ -37,17 +37,17 @@ class UpdateManagedUserUseCase(LoggerMixin):
                 user.is_active = is_active
             if password is not None:
                 user.password_hashed = hash_password(password)
-            if qc_product_provided:
+            if qc_products_provided:
                 if user.role != UserRole.QC:
-                    raise ValueError("qc_product can only be set on QC users")
-                if qc_product is None:
-                    raise ValueError("qc_product cannot be cleared on a QC user")
-                user.qc_product = qc_product
+                    raise ValueError("qc_products can only be set on QC users")
+                if not qc_products:
+                    raise ValueError("qc_products cannot be cleared on a QC user")
+                user.qc_products = qc_products
 
             updated = await self.user_repo.update(user)
             self.log_info(
                 f"User updated: id={updated.id} role={updated.role.value} "
-                f"qc_product={updated.qc_product.value if updated.qc_product else None}"
+                f"qc_products={[p.value for p in updated.qc_products]}"
             )
             return updated
         except ValueError:

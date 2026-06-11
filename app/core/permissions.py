@@ -7,6 +7,7 @@ from app.modules.users.data.model import User, UserRole
 
 
 class Permission(str, Enum):
+    # --- User management ---
     USERS_CREATE_ADMIN = "users:create:admin"
     USERS_CREATE_QC = "users:create:qc"
     USERS_READ_ADMIN = "users:read:admin"
@@ -15,10 +16,17 @@ class Permission(str, Enum):
     USERS_UPDATE_ADMIN = "users:update:admin"
     USERS_UPDATE_QC = "users:update:qc"
     USERS_UPDATE_CREATOR = "users:update:creator"
+    # --- Workspaces (owned by creators) ---
     WORKSPACES_CREATE = "workspaces:create"
+    WORKSPACES_DELETE = "workspaces:delete"
     WORKSPACES_READ_ANY = "workspaces:read:any"
     WORKSPACES_READ_BY_PRODUCT = "workspaces:read:by_product"
-    WORKSPACES_REVIEW = "workspaces:review"
+    # --- Articles ---
+    ARTICLES_CREATE = "articles:create"
+    ARTICLES_UPDATE = "articles:update"
+    ARTICLES_DELETE = "articles:delete"
+    ARTICLES_SUBMIT = "articles:submit"
+    ARTICLES_REVIEW = "articles:review"
 
 
 ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
@@ -36,10 +44,19 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
         {
             Permission.USERS_READ_CREATOR,
             Permission.WORKSPACES_READ_BY_PRODUCT,
-            Permission.WORKSPACES_REVIEW,
+            Permission.ARTICLES_REVIEW,
         }
     ),
-    UserRole.CREATOR: frozenset({Permission.WORKSPACES_CREATE}),
+    UserRole.CREATOR: frozenset(
+        {
+            Permission.WORKSPACES_CREATE,
+            Permission.WORKSPACES_DELETE,
+            Permission.ARTICLES_CREATE,
+            Permission.ARTICLES_UPDATE,
+            Permission.ARTICLES_DELETE,
+            Permission.ARTICLES_SUBMIT,
+        }
+    ),
 }
 
 

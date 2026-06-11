@@ -1,6 +1,5 @@
 # app/modules/users/data/model.py
 from enum import Enum
-from typing import Optional
 
 from pydantic import Field, model_validator
 
@@ -21,17 +20,25 @@ class User(BaseMongoModel):
     password_hashed: str = Field(..., description="Bcrypt hashed password")
     is_active: bool = Field(default=True, description="Whether user can authenticate")
     role: UserRole = Field(default=UserRole.CREATOR, description="User role")
-    qc_product: Optional[Product] = Field(
-        default=None,
-        description="Product the QC is assigned to; required iff role=qc, must be None otherwise",
+    qc_products: list[Product] = Field(
+        default_factory=list,
+        description=(
+            "Products the QC is assigned to; must be a non-empty set iff "
+            "role=qc, must be empty otherwise. A QC may cover several products."
+        ),
     )
 
     @model_validator(mode="after")
-    def _check_qc_product(self) -> "User":
-        if self.role == UserRole.QC and self.qc_product is None:
-            raise ValueError("qc_product is required when role=qc")
-        if self.role != UserRole.QC and self.qc_product is not None:
-            raise ValueError("qc_product must be None when role is not qc")
+    def _check_qc_products(self) -> "User":
+        if self.role == UserRole.QC and not self.qc_products:
+            raise ValueError("qc_products is required (non-empty) when role=qc")
+        if self.role != UserRole.QC and self.qc_products:
+            raise ValueError("qc_products must be empty when role is not qc")
+        # De-duplicate while keeping the canonical product display order.
+        if self.qc_products:
+            order = list(Product)
+            unique = sorted(set(self.qc_products), key=order.index)
+            object.__setattr__(self, "qc_products", unique)
         return self
 
     class Config:

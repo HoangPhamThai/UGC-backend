@@ -20,7 +20,7 @@ class CreateUserUseCase(LoggerMixin):
         email: str,
         password: str,
         role: UserRole = UserRole.CREATOR,
-        qc_product: Optional[Product] = None,
+        qc_products: Optional[list[Product]] = None,
     ) -> User:
         try:
             existing = await self.user_repo.get_by_email(email)
@@ -31,12 +31,12 @@ class CreateUserUseCase(LoggerMixin):
                 email=email,
                 password_hashed=hash_password(password),
                 role=role,
-                qc_product=qc_product,
+                qc_products=qc_products or [],
             )
             created = await self.user_repo.create(user)
             self.log_info(
                 f"User created: id={created.id} role={created.role.value} "
-                f"qc_product={created.qc_product.value if created.qc_product else None}"
+                f"qc_products={[p.value for p in created.qc_products]}"
             )
             return created
         except ValueError:

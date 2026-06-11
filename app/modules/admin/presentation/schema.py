@@ -17,9 +17,12 @@ class CreateManagedUserRequest(BaseModel):
     role: Literal[UserRole.ADMIN, UserRole.QC] = Field(
         ..., description="Role to assign; only 'admin' or 'qc' are accepted"
     )
-    qc_product: Optional[Product] = Field(
+    qc_products: Optional[list[Product]] = Field(
         default=None,
-        description="Required when role=qc, must be omitted/null otherwise",
+        description=(
+            "Products to assign the QC to (one or more). Required (non-empty) "
+            "when role=qc, must be omitted/empty otherwise"
+        ),
     )
 
 
@@ -30,9 +33,12 @@ class UpdateManagedUserRequest(BaseModel):
     password: Optional[str] = Field(
         default=None, min_length=8, description="New password"
     )
-    qc_product: Optional[Product] = Field(
+    qc_products: Optional[list[Product]] = Field(
         default=None,
-        description="Reassign the QC to a different product (only valid for QC users)",
+        description=(
+            "Reassign the QC's products (one or more; replaces the existing "
+            "set). Only valid for QC users; must be non-empty when provided"
+        ),
     )
 
 
@@ -43,7 +49,7 @@ class ManagedUserResponse(BaseModel):
     id: str
     email: str
     role: UserRole
-    qc_product: Optional[Product] = None
+    qc_products: list[Product] = Field(default_factory=list)
     is_active: bool
     created_at: datetime
 

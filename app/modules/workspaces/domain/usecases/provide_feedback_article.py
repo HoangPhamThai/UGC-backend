@@ -27,9 +27,9 @@ class ProvideFeedbackArticleUseCase(LoggerMixin):
         if article is None or article.workspace_id != workspace_id:
             raise ArticleNotFoundError()
         if caller.role != UserRole.SUPERUSER:
-            if caller.qc_product is None:
+            if not caller.qc_products:
                 raise QcMisconfiguredError()
-            if article.product != caller.qc_product:
+            if article.product not in caller.qc_products:
                 # Hide existence: same 404 as missing article.
                 raise ArticleNotFoundError()
         if article.status not in AWAITING_QC_STATUSES:

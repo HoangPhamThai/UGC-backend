@@ -27,7 +27,7 @@ async def get_user_me(
         email=current_user.email,
         is_active=current_user.is_active,
         role=current_user.role,
-        qc_product=current_user.qc_product,
+        qc_products=current_user.qc_products,
         permissions=_permissions_for(current_user),
         created_at=current_user.created_at,
     )
