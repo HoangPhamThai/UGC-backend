@@ -13,7 +13,6 @@ from app.modules.workspaces.presentation.deps import (
     get_uc_delete_workspace,
     get_uc_get_workspace,
     get_uc_list_workspaces,
-    get_uc_provide_feedback_article,
     get_uc_reject_article,
     get_uc_submit_article,
     get_uc_update_article,
@@ -219,18 +218,3 @@ async def reject_article(
     )
     return create_success_response(ArticleResponse.from_model(article))
 
-
-@router.post(
-    "/{workspace_id}/articles/{article_id}/feedback",
-    response_model=StandardResponse[ArticleResponse],
-)
-async def provide_feedback_article(
-    workspace_id: str = Path(...),
-    article_id: str = Path(...),
-    current_user: User = Depends(require_permissions(Permission.ARTICLES_REVIEW)),
-    uc=Depends(get_uc_provide_feedback_article),
-):
-    article = await uc.execute(
-        workspace_id=workspace_id, article_id=article_id, caller=current_user
-    )
-    return create_success_response(ArticleResponse.from_model(article))

@@ -19,9 +19,6 @@ from app.modules.workspaces.domain.usecases.get_workspace import GetWorkspaceUse
 from app.modules.workspaces.domain.usecases.list_workspaces import (
     ListWorkspacesUseCase,
 )
-from app.modules.workspaces.domain.usecases.provide_feedback_article import (
-    ProvideFeedbackArticleUseCase,
-)
 from app.modules.workspaces.domain.usecases.reject_article import RejectArticleUseCase
 from app.modules.workspaces.domain.usecases.submit_article import SubmitArticleUseCase
 from app.modules.workspaces.domain.usecases.update_article import UpdateArticleUseCase
@@ -93,7 +90,3 @@ def get_uc_approve_article() -> ApproveArticleUseCase:
 
 def get_uc_reject_article() -> RejectArticleUseCase:
     return RejectArticleUseCase(article_repo=get_article_repo())
-
-
-def get_uc_provide_feedback_article() -> ProvideFeedbackArticleUseCase:
-    return ProvideFeedbackArticleUseCase(article_repo=get_article_repo())
