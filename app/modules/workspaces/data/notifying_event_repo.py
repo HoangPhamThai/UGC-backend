@@ -48,6 +48,7 @@ def build_notification(
     return Notification(
         recipient_id=recipient, article_id=event.article_id,
         event_id=event.id, type=ntype,
+        workspace_id=article.workspace_id,
     )
 
 

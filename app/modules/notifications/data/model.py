@@ -24,6 +24,7 @@ class Notification(BaseMongoModel):
     event_id: str = Field(..., description="Source ARTICLE_EVENT id")
     type: NotificationType
     read_at: Optional[datetime] = Field(default=None)
+    workspace_id: Optional[str] = None
 
     class Config:
         collection_name = "notifications"

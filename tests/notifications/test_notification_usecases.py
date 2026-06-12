@@ -4,6 +4,7 @@ from app.modules.notifications.data.model import Notification, NotificationType
 from app.modules.notifications.domain.usecases.list_notifications import ListNotificationsUseCase
 from app.modules.notifications.domain.usecases.mark_notification_read import MarkNotificationReadUseCase
 from app.modules.notifications.domain.usecases.mark_all_notifications_read import MarkAllNotificationsReadUseCase
+from app.modules.notifications.presentation.schema import NotificationResponse
 from tests.conftest import FakeNotificationRepo
 
 
@@ -47,3 +48,21 @@ async def test_mark_all_read():
     uc = MarkAllNotificationsReadUseCase(notification_repo=repo)
     count = await uc.execute(recipient_id="u_1")
     assert count == 2 and await repo.count_unread("u_1") == 0
+
+
+def test_notification_response_includes_workspace_id():
+    n = Notification(
+        id="ntf_w", recipient_id="u_1", article_id="art_1", event_id="evt_1",
+        type=NotificationType.APPROVED, workspace_id="ws_1",
+    )
+    resp = NotificationResponse.from_model(n)
+    assert resp.workspace_id == "ws_1"
+
+
+def test_notification_response_workspace_id_none_for_legacy():
+    n = Notification(
+        id="ntf_leg", recipient_id="u_1", article_id="art_1", event_id="evt_1",
+        type=NotificationType.REPLY,
+    )
+    resp = NotificationResponse.from_model(n)
+    assert resp.workspace_id is None

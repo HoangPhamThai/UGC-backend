@@ -15,6 +15,7 @@ class NotificationResponse(BaseModel):
     type: NotificationType
     read_at: Optional[int] = None
     created_at: int
+    workspace_id: Optional[str] = None
 
     @classmethod
     def from_model(cls, n: Notification) -> "NotificationResponse":
@@ -22,6 +23,7 @@ class NotificationResponse(BaseModel):
             id=n.id, article_id=n.article_id, event_id=n.event_id, type=n.type,
             read_at=_epoch_ms(n.read_at) if n.read_at else None,
             created_at=_epoch_ms(n.created_at),
+            workspace_id=n.workspace_id,
         )
 
 
