@@ -22,6 +22,7 @@ from app.modules.users.domain.usecases.bootstrap_default_accounts import (
 from app.modules.users.domain.usecases.create_user import CreateUserUseCase
 from app.modules.users.presentation.routes import router as users_router
 from app.modules.workspaces.data.model import Product
+from app.modules.notifications.data.repo import NotificationDataRepository
 from app.modules.workspaces.data.repo import (
     ArticleDataRepository,
     ArticleEventDataRepository,
@@ -47,6 +48,7 @@ async def lifespan(app: FastAPI):
     await ArticleDataRepository().ensure_indexes()
     await FeedbackDataRepository().ensure_indexes()
     await ArticleEventDataRepository().ensure_indexes()
+    await NotificationDataRepository().ensure_indexes()
 
     # Bootstrap default accounts
     user_repo = UserDataRepository()
