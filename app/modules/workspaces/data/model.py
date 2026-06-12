@@ -81,9 +81,6 @@ class ArticleEventType(str, Enum):
     AUTO_APPROVED = "auto_approved"
 
 
-# A feedback counts as blocking (blocks Approve) while OPEN. See qc-review.md §6.
-BLOCKING_FEEDBACK_STATUSES: frozenset[FeedbackStatus] = frozenset({FeedbackStatus.OPEN})
-
 
 class Workspace(BaseMongoModel):
     id: str = Field(default_factory=lambda: make_prefixed_id("ws"), alias="_id")

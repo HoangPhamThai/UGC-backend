@@ -54,3 +54,12 @@ async def test_claim_non_awaiting_article_raises_state_conflict(qc):
     )
     with pytest.raises(ArticleStateConflictError):
         await uc.execute(workspace_id="ws_1", article_id="art_1", caller=qc)
+
+
+async def test_claim_idempotent_for_current_holder(qc):
+    art = make_article(status=ArticleStatus.SUBMITTED, claimed_by=qc.id)
+    events = FakeArticleEventRepo()
+    uc = ClaimArticleUseCase(article_repo=FakeArticleRepo([art]), event_repo=events)
+    result = await uc.execute(workspace_id="ws_1", article_id="art_1", caller=qc)
+    assert result.claimed_by == qc.id
+    assert events.events == []  # no duplicate CLAIMED event

@@ -23,6 +23,10 @@ class ClaimArticleUseCase(LoggerMixin):
         if article.status not in AWAITING_QC_STATUSES:
             raise ArticleStateConflictError("Article is not awaiting review")
 
+        if article.claimed_by == caller.id:
+            # Already held by this caller — claiming again is a no-op (no duplicate event).
+            return article
+
         claimed = await self.article_repo.claim(article_id, caller.id)
         if claimed is None:
             # Either it vanished, or someone else holds it.
