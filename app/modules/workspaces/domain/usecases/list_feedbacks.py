@@ -32,7 +32,9 @@ class ListFeedbacksUseCase(LoggerMixin):
 
         feedbacks = await self.feedback_repo.list_by_article(article_id)
         # DRAFT feedback is visible only to its author (the composing QC).
+        # SUPERUSER sees all drafts — consistent with every other guard.
         return [
             f for f in feedbacks
-            if f.status != FeedbackStatus.DRAFT or (is_qc and f.author_id == caller.id)
+            if f.status != FeedbackStatus.DRAFT
+            or (is_qc and (caller.role == UserRole.SUPERUSER or f.author_id == caller.id))
         ]

@@ -55,3 +55,17 @@ async def test_out_of_scope_qc_is_404():
     uc = _ctx([_fb("f1", FeedbackStatus.OPEN)])
     with pytest.raises(ArticleNotFoundError):
         await uc.execute(workspace_id="ws_1", article_id="art_1", caller=other_qc)
+
+
+async def test_superuser_sees_all_drafts():
+    su = make_user(role=UserRole.SUPERUSER, uid="u_su")
+    uc = _ctx([_fb("f1", FeedbackStatus.OPEN), _fb("f2", FeedbackStatus.DRAFT, author="u_qc")])
+    result = await uc.execute(workspace_id="ws_1", article_id="art_1", caller=su)
+    assert {f.id for f in result} == {"f1", "f2"}
+
+
+async def test_other_qc_does_not_see_foreign_draft():
+    other_qc = make_user(role=UserRole.QC, products=[Product.CL], uid="u_other")
+    uc = _ctx([_fb("f1", FeedbackStatus.OPEN), _fb("f2", FeedbackStatus.DRAFT, author="u_qc")])
+    result = await uc.execute(workspace_id="ws_1", article_id="art_1", caller=other_qc)
+    assert {f.id for f in result} == {"f1"}  # sees open, NOT the other QC's draft
