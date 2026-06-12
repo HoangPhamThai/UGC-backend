@@ -54,3 +54,18 @@ async def test_qc_without_products_raises():
     uc = ListReviewQueueUseCase(article_repo=FakeArticleRepo(_articles()))
     with pytest.raises(QcMisconfiguredError):
         await uc.execute(caller=bad, group=ReviewQueueGroup.NEEDS_REVIEW, page=1, limit=10)
+
+
+async def test_pagination_returns_second_page():
+    qc = make_user(role=UserRole.QC, products=[Product.CL], uid="u_qc")
+    # two needs_review articles, both product CL
+    arts = [
+        make_article(aid="p1", status=ArticleStatus.SUBMITTED, product=Product.CL),
+        make_article(aid="p2", status=ArticleStatus.EDITED, product=Product.CL),
+    ]
+    uc = ListReviewQueueUseCase(article_repo=FakeArticleRepo(arts))
+    page1 = await uc.execute(caller=qc, group=ReviewQueueGroup.NEEDS_REVIEW, page=1, limit=1)
+    page2 = await uc.execute(caller=qc, group=ReviewQueueGroup.NEEDS_REVIEW, page=2, limit=1)
+    assert len(page1.items) == 1 and len(page2.items) == 1
+    assert page1.items[0].id != page2.items[0].id
+    assert page1.total == 2 and page2.total == 2

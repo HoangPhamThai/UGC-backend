@@ -17,7 +17,6 @@ from app.modules.workspaces.domain.repo import (
     WorkspaceRepo,
 )
 from app.modules.workspaces.domain.usecases.add_reply import AddReplyUseCase
-from app.modules.workspaces.domain.usecases.list_review_queue import ListReviewQueueUseCase
 from app.modules.workspaces.domain.usecases.approve_article import ApproveArticleUseCase
 from app.modules.workspaces.domain.usecases.claim_article import ClaimArticleUseCase
 from app.modules.workspaces.domain.usecases.create_article import CreateArticleUseCase
@@ -30,6 +29,7 @@ from app.modules.workspaces.domain.usecases.delete_workspace import (
     DeleteWorkspaceUseCase,
 )
 from app.modules.workspaces.domain.usecases.get_workspace import GetWorkspaceUseCase
+from app.modules.workspaces.domain.usecases.list_review_queue import ListReviewQueueUseCase
 from app.modules.workspaces.domain.usecases.list_workspaces import (
     ListWorkspacesUseCase,
 )

@@ -6,7 +6,7 @@ from app.core.permissions import Permission, require_permissions
 from app.modules.users.data.model import User
 from app.modules.workspaces.domain.usecases.list_review_queue import ReviewQueueGroup
 from app.modules.workspaces.presentation.deps import get_uc_list_review_queue
-from app.modules.workspaces.presentation.schema import ArticleResponse, ReviewQueueResponse
+from app.modules.workspaces.presentation.schema import ReviewQueueItemResponse, ReviewQueueResponse
 
 router = APIRouter(prefix="/review", tags=["review"])
 
@@ -21,7 +21,7 @@ async def review_queue(
 ):
     result = await uc.execute(caller=current_user, group=group, page=page, limit=limit)
     data = ReviewQueueResponse(
-        items=[ArticleResponse.from_model(a) for a in result.items],
+        items=[ReviewQueueItemResponse.from_model(a) for a in result.items],
         total=result.total,
     )
     return create_success_response(data)
