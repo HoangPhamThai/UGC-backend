@@ -1,5 +1,5 @@
 import uuid
-from pydantic import BaseModel, Field, ConfigDict, field_validator, ValidationInfo
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime, timezone
 from typing import Any, Generic, TypeVar, Optional, Dict, List, Literal
 
@@ -40,14 +40,6 @@ class BaseMongoModel(BaseModel):
         populate_by_name=True,  # accept both "id" and "_id"
         ser_json_timedelta="iso8601",
     )
-
-    # Touch updated_at on any field change
-    @field_validator("*", mode="before")
-    @classmethod
-    def _bump_timestamp(cls, v, info: ValidationInfo):
-        if info.field_name != "updated_at":
-            info.data["updated_at"] = datetime.now(timezone.utc)
-        return v
 
 
 class ErrorDetail(BaseModel):
