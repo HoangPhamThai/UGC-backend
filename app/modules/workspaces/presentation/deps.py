@@ -1,6 +1,9 @@
 # app/modules/workspaces/presentation/deps.py
 from functools import lru_cache
 
+from app.modules.notifications.data.repo import NotificationDataRepository
+from app.modules.notifications.domain.repo import NotificationRepo
+from app.modules.workspaces.data.notifying_event_repo import NotifyingEventRepo
 from app.modules.workspaces.data.repo import (
     ArticleDataRepository,
     ArticleEventDataRepository,
@@ -26,6 +29,8 @@ from app.modules.workspaces.domain.usecases.delete_workspace import (
     DeleteWorkspaceUseCase,
 )
 from app.modules.workspaces.domain.usecases.get_workspace import GetWorkspaceUseCase
+from app.modules.workspaces.domain.usecases.list_feedbacks import ListFeedbacksUseCase
+from app.modules.workspaces.domain.usecases.list_review_queue import ListReviewQueueUseCase
 from app.modules.workspaces.domain.usecases.list_workspaces import (
     ListWorkspacesUseCase,
 )
@@ -53,8 +58,24 @@ def get_feedback_repo() -> FeedbackRepo:
 
 
 @lru_cache(maxsize=1)
-def get_event_repo() -> ArticleEventRepo:
+def get_notification_repo() -> NotificationRepo:
+    return NotificationDataRepository()
+
+
+@lru_cache(maxsize=1)
+def _get_raw_event_repo() -> ArticleEventRepo:
     return ArticleEventDataRepository()
+
+
+@lru_cache(maxsize=1)
+def get_event_repo() -> ArticleEventRepo:
+    # Decorate the raw event repo so every persisted event also fans out notifications.
+    return NotifyingEventRepo(
+        inner=_get_raw_event_repo(),
+        notification_repo=get_notification_repo(),
+        article_repo=get_article_repo(),
+        workspace_repo=get_workspace_repo(),
+    )
 
 
 def get_uc_create_workspace() -> CreateWorkspaceUseCase:
@@ -104,6 +125,7 @@ def get_uc_submit_article() -> SubmitArticleUseCase:
     return SubmitArticleUseCase(
         workspace_repo=get_workspace_repo(),
         article_repo=get_article_repo(),
+        event_repo=get_event_repo(),
     )
 
 
@@ -161,4 +183,16 @@ def get_uc_publish_review() -> PublishReviewUseCase:
         article_repo=get_article_repo(),
         feedback_repo=get_feedback_repo(),
         event_repo=get_event_repo(),
+    )
+
+
+def get_uc_list_review_queue() -> ListReviewQueueUseCase:
+    return ListReviewQueueUseCase(article_repo=get_article_repo())
+
+
+def get_uc_list_feedbacks() -> ListFeedbacksUseCase:
+    return ListFeedbacksUseCase(
+        workspace_repo=get_workspace_repo(),
+        article_repo=get_article_repo(),
+        feedback_repo=get_feedback_repo(),
     )

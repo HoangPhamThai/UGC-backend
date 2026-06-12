@@ -130,6 +130,36 @@ class WorkspaceListResponse(BaseModel):
     total: int
 
 
+class ReviewQueueItemResponse(BaseModel):
+    model_config = ConfigDict(use_enum_values=False)
+    id: str
+    workspace_id: str
+    name: str
+    product: Product
+    status: ArticleStatus
+    on_air_date: date
+    claimed_by: Optional[str] = None
+    review_round: int = 0
+    last_activity_at: Optional[int] = None
+    created_at: int
+    updated_at: int
+
+    @classmethod
+    def from_model(cls, a: Article) -> "ReviewQueueItemResponse":
+        return cls(
+            id=a.id, workspace_id=a.workspace_id, name=a.name, product=a.product,
+            status=a.status, on_air_date=a.on_air_date,
+            claimed_by=a.claimed_by, review_round=a.review_round,
+            last_activity_at=_to_epoch_ms(a.last_activity_at) if a.last_activity_at else None,
+            created_at=_to_epoch_ms(a.created_at), updated_at=_to_epoch_ms(a.updated_at),
+        )
+
+
+class ReviewQueueResponse(BaseModel):
+    items: list[ReviewQueueItemResponse]
+    total: int
+
+
 # --- QC review requests ---
 
 class AnchorRequest(BaseModel):

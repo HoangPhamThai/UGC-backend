@@ -13,6 +13,8 @@ from app.core.settings import settings
 from app.middlewares import setup_middleware
 from app.modules.admin.presentation.routes import router as admin_router
 from app.modules.auth.presentation.routes import router as auth_router
+from app.modules.notifications.data.repo import NotificationDataRepository
+from app.modules.notifications.presentation.routes import router as notifications_router
 from app.modules.users.data.model import UserRole
 from app.modules.users.data.repo import UserDataRepository
 from app.modules.users.domain.usecases.bootstrap_default_accounts import (
@@ -28,6 +30,7 @@ from app.modules.workspaces.data.repo import (
     FeedbackDataRepository,
     WorkspaceDataRepository,
 )
+from app.modules.workspaces.presentation.review_routes import router as review_router
 from app.modules.workspaces.presentation.routes import router as workspaces_router
 
 
@@ -47,6 +50,7 @@ async def lifespan(app: FastAPI):
     await ArticleDataRepository().ensure_indexes()
     await FeedbackDataRepository().ensure_indexes()
     await ArticleEventDataRepository().ensure_indexes()
+    await NotificationDataRepository().ensure_indexes()
 
     # Bootstrap default accounts
     user_repo = UserDataRepository()
@@ -100,6 +104,8 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(workspaces_router, prefix="/api/v1")
+app.include_router(review_router, prefix="/api/v1")
+app.include_router(notifications_router, prefix="/api/v1")
 
 
 @app.get("/health")

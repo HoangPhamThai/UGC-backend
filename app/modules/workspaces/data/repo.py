@@ -203,6 +203,7 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
         await coll.create_index([("workspace_id", ASCENDING), ("created_at", ASCENDING)])
         await coll.create_index([("workspace_id", ASCENDING), ("product", ASCENDING)])
         await coll.create_index([("product", ASCENDING), ("status", ASCENDING)])
+        await coll.create_index([("status", ASCENDING), ("on_air_date", ASCENDING)])
 
     @override
     async def create(self, article: Article) -> Article:
@@ -369,6 +370,35 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
             return_document=ReturnDocument.AFTER,
         )
         return Article.model_validate(doc) if doc else None
+
+    def _product_status_filter(
+        self, products: Optional[list[Product]], statuses: Optional[list[ArticleStatus]]
+    ) -> dict:
+        filt: dict = {}
+        if products is not None:
+            filt["product"] = {"$in": [p.value for p in products]}
+        if statuses is not None:
+            filt["status"] = {"$in": [s.value for s in statuses]}
+        return filt
+
+    @override
+    async def list_by_products(
+        self, products, *, statuses, skip, limit
+    ) -> list[Article]:
+        coll = await self._get_collection()
+        cursor = (
+            coll.find(self._product_status_filter(products, statuses))
+            .sort([("on_air_date", ASCENDING), ("created_at", ASCENDING)])
+            .skip(skip)
+            .limit(limit)
+        )
+        docs = [doc async for doc in cursor]
+        return [Article.model_validate(d) for d in docs]
+
+    @override
+    async def count_by_products(self, products, *, statuses) -> int:
+        coll = await self._get_collection()
+        return await coll.count_documents(self._product_status_filter(products, statuses))
 
     @override
     async def delete(self, article_id: str) -> None:

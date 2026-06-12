@@ -15,6 +15,8 @@ from app.modules.workspaces.data.model import (
     Product,
     Workspace,
 )
+from app.modules.notifications.data.model import Notification
+from app.modules.notifications.domain.repo import NotificationRepo
 from app.modules.workspaces.domain.repo import (
     ArticleEventRepo,
     ArticleRepo,
@@ -118,6 +120,22 @@ class FakeArticleRepo(ArticleRepo):
         a.last_activity_at = _now()
         return a
 
+    async def list_by_products(self, products, *, statuses, skip, limit):
+        rows = [
+            a for a in self.items.values()
+            if (products is None or a.product in products)
+            and (statuses is None or a.status in statuses)
+        ]
+        rows.sort(key=lambda a: (a.on_air_date, a.created_at))
+        return rows[skip:skip + limit]
+
+    async def count_by_products(self, products, *, statuses):
+        return sum(
+            1 for a in self.items.values()
+            if (products is None or a.product in products)
+            and (statuses is None or a.status in statuses)
+        )
+
 
 class FakeFeedbackRepo(FeedbackRepo):
     def __init__(self, feedbacks: Optional[list[Feedback]] = None) -> None:
@@ -175,6 +193,42 @@ class FakeArticleEventRepo(ArticleEventRepo):
     async def create(self, event):
         self.events.append(event)
         return event
+
+
+class FakeNotificationRepo(NotificationRepo):
+    def __init__(self, items: Optional[list[Notification]] = None) -> None:
+        self.items: dict[str, Notification] = {n.id: n for n in (items or [])}
+
+    async def create(self, notification):
+        self.items[notification.id] = notification
+        return notification
+
+    def _matches(self, n, recipient_id, unread_only):
+        return n.recipient_id == recipient_id and (not unread_only or n.read_at is None)
+
+    async def list_for_recipient(self, recipient_id, *, unread_only, skip, limit):
+        rows = [n for n in self.items.values() if self._matches(n, recipient_id, unread_only)]
+        rows.sort(key=lambda n: n.created_at, reverse=True)
+        return rows[skip:skip + limit]
+
+    async def count_for_recipient(self, recipient_id, *, unread_only):
+        return sum(1 for n in self.items.values() if self._matches(n, recipient_id, unread_only))
+
+    async def mark_read(self, notification_id, recipient_id):
+        n = self.items.get(notification_id)
+        if n is None or n.recipient_id != recipient_id:
+            return None
+        if n.read_at is None:
+            n.read_at = _now()
+        return n
+
+    async def mark_all_read(self, recipient_id):
+        c = 0
+        for n in self.items.values():
+            if n.recipient_id == recipient_id and n.read_at is None:
+                n.read_at = _now()
+                c += 1
+        return c
 
 
 # --- Builders / fixtures ---
