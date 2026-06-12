@@ -20,8 +20,9 @@ class NotificationRepo(ABC):
         self, recipient_id: str, *, unread_only: bool
     ) -> int: ...
 
-    @abstractmethod
-    async def count_unread(self, recipient_id: str) -> int: ...
+    async def count_unread(self, recipient_id: str) -> int:
+        """Convenience: unread count = count_for_recipient(unread_only=True)."""
+        return await self.count_for_recipient(recipient_id, unread_only=True)
 
     @abstractmethod
     async def mark_read(

@@ -40,3 +40,15 @@ async def test_resubmit_emits_edited_resubmitted_event(creator):
     assert result.status == ArticleStatus.EDITED
     assert result.last_activity_by == creator.id
     assert events.events[-1].type == ArticleEventType.EDITED_RESUBMITTED
+
+
+async def test_submit_from_non_submittable_status_raises(creator):
+    from app.modules.workspaces.domain.errors import ArticleStateConflictError
+    art = make_article(status=ArticleStatus.SUBMITTED, claimed_by=None)
+    uc = SubmitArticleUseCase(
+        workspace_repo=FakeWorkspaceRepo([_ws()]),
+        article_repo=FakeArticleRepo([art]),
+        event_repo=FakeArticleEventRepo(),
+    )
+    with pytest.raises(ArticleStateConflictError):
+        await uc.execute(workspace_id="ws_1", article_id="art_1", caller=creator)

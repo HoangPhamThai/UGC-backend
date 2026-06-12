@@ -56,11 +56,6 @@ class NotificationDataRepository(LoggerMixin, NotificationRepo):
         return await coll.count_documents(self._filter(recipient_id, unread_only))
 
     @override
-    async def count_unread(self, recipient_id: str) -> int:
-        coll = await self._get_collection()
-        return await coll.count_documents({"recipient_id": recipient_id, "read_at": None})
-
-    @override
     async def mark_read(self, notification_id: str, recipient_id: str) -> Optional[Notification]:
         coll = await self._get_collection()
         now = datetime.now(timezone.utc)

@@ -214,10 +214,6 @@ class FakeNotificationRepo(NotificationRepo):
     async def count_for_recipient(self, recipient_id, *, unread_only):
         return sum(1 for n in self.items.values() if self._matches(n, recipient_id, unread_only))
 
-    async def count_unread(self, recipient_id):
-        return sum(1 for n in self.items.values()
-                   if n.recipient_id == recipient_id and n.read_at is None)
-
     async def mark_read(self, notification_id, recipient_id):
         n = self.items.get(notification_id)
         if n is None or n.recipient_id != recipient_id:
