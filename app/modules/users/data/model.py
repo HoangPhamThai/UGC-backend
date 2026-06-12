@@ -28,6 +28,22 @@ class User(BaseMongoModel):
         ),
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_legacy_qc_product(cls, data):
+        """Back-compat: legacy user docs stored a singular scalar `qc_product`
+        instead of the `qc_products` array. Normalize on read so old documents
+        load cleanly (mirrors the migrate_qc_products job). The stray field is
+        always dropped; it only seeds `qc_products` for QC users that don't
+        already have one."""
+        if not isinstance(data, dict) or "qc_product" not in data:
+            return data
+        data = dict(data)
+        legacy = data.pop("qc_product")
+        if data.get("role") == UserRole.QC and legacy and not data.get("qc_products"):
+            data["qc_products"] = [legacy]
+        return data
+
     @model_validator(mode="after")
     def _check_qc_products(self) -> "User":
         if self.role == UserRole.QC and not self.qc_products:

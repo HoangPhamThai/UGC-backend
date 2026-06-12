@@ -15,6 +15,7 @@ from app.modules.admin.presentation.routes import router as admin_router
 from app.modules.auth.presentation.routes import router as auth_router
 from app.modules.notifications.data.repo import NotificationDataRepository
 from app.modules.notifications.presentation.routes import router as notifications_router
+from app.jobs.migrate_qc_products import migrate_qc_products
 from app.modules.users.data.model import UserRole
 from app.modules.users.data.repo import UserDataRepository
 from app.modules.users.domain.usecases.bootstrap_default_accounts import (
@@ -51,6 +52,14 @@ async def lifespan(app: FastAPI):
     await FeedbackDataRepository().ensure_indexes()
     await ArticleEventDataRepository().ensure_indexes()
     await NotificationDataRepository().ensure_indexes()
+
+    # Heal legacy user docs (singular `qc_product` -> `qc_products` array) BEFORE
+    # bootstrap reads any account. Idempotent; a no-op once migrated.
+    migrated = await migrate_qc_products(await mongo_connection.get_db())
+    if migrated:
+        logging.getLogger("app.startup").info(
+            f"qc_products migration healed {migrated} legacy user doc(s)"
+        )
 
     # Bootstrap default accounts
     user_repo = UserDataRepository()
