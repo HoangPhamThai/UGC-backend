@@ -17,6 +17,7 @@ from app.modules.workspaces.domain.repo import (
     WorkspaceRepo,
 )
 from app.modules.workspaces.domain.usecases.add_reply import AddReplyUseCase
+from app.modules.workspaces.domain.usecases.list_review_queue import ListReviewQueueUseCase
 from app.modules.workspaces.domain.usecases.approve_article import ApproveArticleUseCase
 from app.modules.workspaces.domain.usecases.claim_article import ClaimArticleUseCase
 from app.modules.workspaces.domain.usecases.create_article import CreateArticleUseCase
@@ -182,3 +183,7 @@ def get_uc_publish_review() -> PublishReviewUseCase:
         feedback_repo=get_feedback_repo(),
         event_repo=get_event_repo(),
     )
+
+
+def get_uc_list_review_queue() -> ListReviewQueueUseCase:
+    return ListReviewQueueUseCase(article_repo=get_article_repo())

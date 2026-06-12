@@ -130,6 +130,11 @@ class WorkspaceListResponse(BaseModel):
     total: int
 
 
+class ReviewQueueResponse(BaseModel):
+    items: list[ArticleResponse]
+    total: int
+
+
 # --- QC review requests ---
 
 class AnchorRequest(BaseModel):

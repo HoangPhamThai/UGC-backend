@@ -30,6 +30,7 @@ from app.modules.workspaces.data.repo import (
     FeedbackDataRepository,
     WorkspaceDataRepository,
 )
+from app.modules.workspaces.presentation.review_routes import router as review_router
 from app.modules.workspaces.presentation.routes import router as workspaces_router
 
 
@@ -103,6 +104,7 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(workspaces_router, prefix="/api/v1")
+app.include_router(review_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
 
 
