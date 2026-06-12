@@ -11,6 +11,20 @@ def make_prefixed_id(prefix: str) -> str:
     """Generate a prefixed ID like 'kb_<uuid hex>'."""
     return f"{prefix}_{uuid.uuid4().hex}"
 
+
+def to_epoch_ms(dt: datetime) -> int:
+    """Milliseconds since the Unix epoch.
+
+    Treats a naive datetime as UTC. MongoDB returns naive datetimes (the driver
+    is not tz_aware here) holding the UTC wall-clock; calling ``dt.timestamp()``
+    directly would interpret them as the server's LOCAL time and skew the result
+    by the server's UTC offset. Normalizing naive -> UTC makes the output correct
+    regardless of the server timezone."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return int(dt.timestamp() * 1000)
+
+
 # --- Base model ---
 
 

@@ -14,6 +14,7 @@ from app.modules.workspaces.data.model import (
     Product,
     Workspace,
 )
+from app.core.model import to_epoch_ms as _to_epoch_ms
 
 
 # --- Requests ---
@@ -52,10 +53,6 @@ class UpdateArticleRequest(BaseModel):
 
 
 # --- Responses ---
-
-
-def _to_epoch_ms(dt: datetime) -> int:
-    return int(dt.timestamp() * 1000)
 
 
 class ArticleResponse(BaseModel):
