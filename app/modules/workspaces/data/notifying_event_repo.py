@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from app.core.logging_mixin import LoggerMixin
 from app.modules.notifications.data.model import Notification, NotificationType
 from app.modules.notifications.domain.repo import NotificationRepo
 from app.modules.workspaces.data.model import Article, ArticleEvent, ArticleEventType
@@ -51,7 +52,7 @@ def build_notification(
 
 
 @dataclass(frozen=True)
-class NotifyingEventRepo(ArticleEventRepo):
+class NotifyingEventRepo(LoggerMixin, ArticleEventRepo):
     """Decorator over an ArticleEventRepo: persists the event, then fans out a
     notification for notifying event types. No-op (just persists) otherwise."""
     inner: ArticleEventRepo
@@ -63,13 +64,18 @@ class NotifyingEventRepo(ArticleEventRepo):
         await self.inner.create(event)
         if event.type not in NOTIFYING_EVENT_TYPES:
             return event
-        article = await self.article_repo.get_by_id(event.article_id)
-        if article is None:
-            return event
-        ws = await self.workspace_repo.get_by_id(article.workspace_id)
-        if ws is None:
-            return event
-        notification = build_notification(event, article, ws.owner_user_id)
-        if notification is not None:
-            await self.notification_repo.create(notification)
+        try:
+            article = await self.article_repo.get_by_id(event.article_id)
+            if article is None:
+                return event
+            ws = await self.workspace_repo.get_by_id(article.workspace_id)
+            if ws is None:
+                return event
+            notification = build_notification(event, article, ws.owner_user_id)
+            if notification is not None:
+                await self.notification_repo.create(notification)
+        except Exception as exc:  # noqa: BLE001 - notifications are best-effort
+            self.log_warning(
+                f"Failed to generate notification for event {event.id} ({event.type.value}): {exc}"
+            )
         return event
