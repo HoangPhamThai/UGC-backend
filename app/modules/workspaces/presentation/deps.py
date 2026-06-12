@@ -29,6 +29,7 @@ from app.modules.workspaces.domain.usecases.delete_workspace import (
     DeleteWorkspaceUseCase,
 )
 from app.modules.workspaces.domain.usecases.get_workspace import GetWorkspaceUseCase
+from app.modules.workspaces.domain.usecases.list_feedbacks import ListFeedbacksUseCase
 from app.modules.workspaces.domain.usecases.list_review_queue import ListReviewQueueUseCase
 from app.modules.workspaces.domain.usecases.list_workspaces import (
     ListWorkspacesUseCase,
@@ -187,3 +188,11 @@ def get_uc_publish_review() -> PublishReviewUseCase:
 
 def get_uc_list_review_queue() -> ListReviewQueueUseCase:
     return ListReviewQueueUseCase(article_repo=get_article_repo())
+
+
+def get_uc_list_feedbacks() -> ListFeedbacksUseCase:
+    return ListFeedbacksUseCase(
+        workspace_repo=get_workspace_repo(),
+        article_repo=get_article_repo(),
+        feedback_repo=get_feedback_repo(),
+    )
