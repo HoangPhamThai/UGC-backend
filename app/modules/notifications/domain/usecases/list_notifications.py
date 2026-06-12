@@ -27,5 +27,8 @@ class ListNotificationsUseCase(LoggerMixin):
         total = await self.notification_repo.count_for_recipient(
             recipient_id, unread_only=unread_only
         )
-        unread = await self.notification_repo.count_unread(recipient_id)
+        unread = (
+            total if unread_only
+            else await self.notification_repo.count_unread(recipient_id)
+        )
         return NotificationListResult(items=items, total=total, unread_count=unread)

@@ -1,5 +1,5 @@
 # app/modules/notifications/presentation/routes.py
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from app.core.auth import get_current_user
 from app.core.model import StandardResponse, create_success_response
@@ -53,6 +53,5 @@ async def mark_read(
 ):
     n = await uc.execute(notification_id=notification_id, recipient_id=current_user.id)
     if n is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
     return create_success_response(NotificationResponse.from_model(n))
