@@ -28,6 +28,7 @@ def test_review_published_notifies_creator():
                            _article(), owner_user_id="u_creator")
     assert n is not None and n.recipient_id == "u_creator"
     assert n.type == NotificationType.FEEDBACK_PROVIDED and n.event_id == "evt_1"
+    assert n.workspace_id == "ws_1"
 
 
 def test_edited_resubmitted_notifies_claiming_qc():
@@ -35,15 +36,18 @@ def test_edited_resubmitted_notifies_claiming_qc():
                            _article(claimed_by="u_qc"), owner_user_id="u_creator")
     assert n is not None and n.recipient_id == "u_qc"
     assert n.type == NotificationType.EDITED_RESUBMITTED
+    assert n.workspace_id == "ws_1"
 
 
 def test_qc_reply_notifies_creator_and_creator_reply_notifies_qc():
     qc_reply = build_notification(_event(ArticleEventType.REPLY_ADDED, "u_qc"),
                                   _article(), owner_user_id="u_creator")
     assert qc_reply.recipient_id == "u_creator" and qc_reply.type == NotificationType.REPLY
+    assert qc_reply.workspace_id == "ws_1"
     creator_reply = build_notification(_event(ArticleEventType.REPLY_ADDED, "u_creator"),
                                        _article(claimed_by="u_qc"), owner_user_id="u_creator")
     assert creator_reply.recipient_id == "u_qc" and creator_reply.type == NotificationType.REPLY
+    assert creator_reply.workspace_id == "ws_1"
 
 
 def test_non_notifying_event_returns_none():
@@ -92,6 +96,7 @@ def test_rejected_notifies_creator():
                            _article(), owner_user_id="u_creator")
     assert n is not None and n.recipient_id == "u_creator"
     assert n.type == NotificationType.REJECTED
+    assert n.workspace_id == "ws_1"
 
 
 async def test_notifying_repo_gracefully_skips_missing_article():
