@@ -53,6 +53,7 @@ class ApproveArticleUseCase(LoggerMixin):
             reviewer_user_id=caller.id,
             set_reviewed_at=True,
             last_activity_by=caller.id,
+            clear_reviewed_content=True,
         )
         if updated is None:
             raise ArticleNotFoundError()

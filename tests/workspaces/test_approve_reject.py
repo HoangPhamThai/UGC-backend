@@ -109,3 +109,30 @@ async def test_reject_wrong_state_raises(qc):
     )
     with pytest.raises(ArticleStateConflictError):
         await uc.execute(workspace_id="ws_1", article_id="art_1", caller=qc, reason="x")
+
+
+async def test_approve_clears_reviewed_content(qc):
+    art = make_article(status=ArticleStatus.EDITED, claimed_by="u_qc")
+    art.reviewed_content = "<p>old snapshot</p>"
+    uc = ApproveArticleUseCase(
+        article_repo=FakeArticleRepo([art]),
+        feedback_repo=FakeFeedbackRepo([]),
+        event_repo=FakeArticleEventRepo(),
+    )
+    result = await uc.execute(workspace_id="ws_1", article_id="art_1", caller=qc)
+    assert result.status == ArticleStatus.APPROVED
+    assert result.reviewed_content is None
+
+
+async def test_reject_clears_reviewed_content(qc):
+    art = make_article(status=ArticleStatus.SUBMITTED, claimed_by="u_qc")
+    art.reviewed_content = "<p>old snapshot</p>"
+    uc = RejectArticleUseCase(
+        article_repo=FakeArticleRepo([art]),
+        event_repo=FakeArticleEventRepo(),
+    )
+    result = await uc.execute(
+        workspace_id="ws_1", article_id="art_1", caller=qc, reason="off topic"
+    )
+    assert result.status == ArticleStatus.REJECTED
+    assert result.reviewed_content is None

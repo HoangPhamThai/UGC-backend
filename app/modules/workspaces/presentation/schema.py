@@ -70,6 +70,7 @@ class ArticleResponse(BaseModel):
     claimed_by: Optional[str] = None
     review_round: int = 0
     reject_reason: Optional[str] = None
+    reviewed_content: Optional[str] = None
 
     @classmethod
     def from_model(cls, article: Article) -> "ArticleResponse":
@@ -86,6 +87,7 @@ class ArticleResponse(BaseModel):
             claimed_by=article.claimed_by,
             review_round=article.review_round,
             reject_reason=article.reject_reason,
+            reviewed_content=article.reviewed_content,
         )
 
 

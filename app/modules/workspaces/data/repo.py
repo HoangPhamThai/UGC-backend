@@ -285,6 +285,8 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
         set_reviewed_at: bool = False,
         last_activity_by: Optional[str] = None,
         increment_review_round: bool = False,
+        reviewed_content: Optional[str] = None,
+        clear_reviewed_content: bool = False,
     ) -> Optional[Article]:
         coll = await self._get_collection()
         now = datetime.now(timezone.utc)
@@ -296,6 +298,10 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
         if last_activity_by is not None:
             set_doc["last_activity_by"] = last_activity_by
             set_doc["last_activity_at"] = now
+        if clear_reviewed_content:
+            set_doc["reviewed_content"] = None
+        elif reviewed_content is not None:
+            set_doc["reviewed_content"] = reviewed_content
         update: dict = {"$set": set_doc}
         if increment_review_round:
             update["$inc"] = {"review_round": 1}
@@ -366,6 +372,7 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
                 "last_activity_by": reviewer_user_id,
                 "last_activity_at": now,
                 "updated_at": now,
+                "reviewed_content": None,
             }},
             return_document=ReturnDocument.AFTER,
         )

@@ -65,3 +65,32 @@ async def test_publish_from_non_review_state_raises(qc):
     )
     with pytest.raises(ArticleStateConflictError):
         await uc.execute(workspace_id="ws_1", article_id="art_1", caller=qc)
+
+
+async def test_publish_sets_reviewed_content_snapshot(qc):
+    html = "<p>version at publish</p>"
+    art = make_article(status=ArticleStatus.SUBMITTED, claimed_by="u_qc")
+    art.content = html
+    frepo = FakeFeedbackRepo([_fb("fb_1", FeedbackStatus.DRAFT)])
+    uc = PublishReviewUseCase(
+        article_repo=FakeArticleRepo([art]),
+        feedback_repo=frepo,
+        event_repo=FakeArticleEventRepo(),
+    )
+    result = await uc.execute(workspace_id="ws_1", article_id="art_1", caller=qc)
+    assert result.reviewed_content == html
+    assert result.status == ArticleStatus.FEEDBACK_PROVIDED
+
+
+async def test_second_publish_overwrites_snapshot(qc):
+    art = make_article(status=ArticleStatus.EDITED, claimed_by="u_qc")
+    art.content = "<p>round 2 content</p>"
+    art.reviewed_content = "<p>old snapshot</p>"
+    frepo = FakeFeedbackRepo([_fb("fb_1", FeedbackStatus.DRAFT)])
+    uc = PublishReviewUseCase(
+        article_repo=FakeArticleRepo([art]),
+        feedback_repo=frepo,
+        event_repo=FakeArticleEventRepo(),
+    )
+    result = await uc.execute(workspace_id="ws_1", article_id="art_1", caller=qc)
+    assert result.reviewed_content == "<p>round 2 content</p>"

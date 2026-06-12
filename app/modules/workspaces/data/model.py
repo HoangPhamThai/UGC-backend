@@ -103,6 +103,10 @@ class Article(BaseMongoModel):
         ..., description="Closed-set product code; editable while status is editable"
     )
     content: str = Field(default="", description="TipTap HTML; may be empty")
+    reviewed_content: Optional[str] = Field(
+        default=None,
+        description="HTML snapshot at last QC publish; cleared on terminal status",
+    )
     on_air_date: date = Field(
         ...,
         description="Go-live calendar date; not in the past at create/update. "

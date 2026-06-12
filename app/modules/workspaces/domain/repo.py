@@ -111,6 +111,8 @@ class ArticleRepo(ABC):
         set_reviewed_at: bool = False,
         last_activity_by: Optional[str] = None,
         increment_review_round: bool = False,
+        reviewed_content: Optional[str] = None,
+        clear_reviewed_content: bool = False,
     ) -> Optional[Article]: ...
 
     @abstractmethod

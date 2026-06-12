@@ -48,6 +48,7 @@ class PublishReviewUseCase(LoggerMixin):
             set_reviewed_at=True,
             last_activity_by=caller.id,
             increment_review_round=True,
+            reviewed_content=article.content,
         )
         if updated is None:
             raise ArticleNotFoundError()

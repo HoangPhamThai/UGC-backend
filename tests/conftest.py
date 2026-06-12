@@ -70,7 +70,8 @@ class FakeArticleRepo(ArticleRepo):
 
     async def update_status(self, article_id, *, status, reviewer_user_id=None,
                             set_reviewed_at=False, last_activity_by=None,
-                            increment_review_round=False):
+                            increment_review_round=False,
+                            reviewed_content=None, clear_reviewed_content=False):
         a = self.items.get(article_id)
         if a is None:
             return None
@@ -81,6 +82,10 @@ class FakeArticleRepo(ArticleRepo):
             a.last_activity_by = last_activity_by
             a.last_activity_at = _now()
         if increment_review_round: a.review_round += 1
+        if clear_reviewed_content:
+            a.reviewed_content = None
+        elif reviewed_content is not None:
+            a.reviewed_content = reviewed_content
         return a
 
     async def claim(self, article_id, qc_user_id):
@@ -118,6 +123,7 @@ class FakeArticleRepo(ArticleRepo):
         a.rejected_at = _now()
         a.last_activity_by = reviewer_user_id
         a.last_activity_at = _now()
+        a.reviewed_content = None
         return a
 
     async def list_by_products(self, products, *, statuses, skip, limit):
