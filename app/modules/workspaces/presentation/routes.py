@@ -5,23 +5,34 @@ from app.core.auth import get_current_user
 from app.core.model import StandardResponse, create_success_response
 from app.core.permissions import Permission, require_permissions
 from app.modules.users.data.model import User
+from app.modules.workspaces.data.model import FeedbackAnchor
 from app.modules.workspaces.presentation.deps import (
+    get_uc_add_reply,
     get_uc_approve_article,
+    get_uc_claim_article,
     get_uc_create_article,
+    get_uc_create_feedback,
     get_uc_create_workspace,
     get_uc_delete_article,
     get_uc_delete_workspace,
     get_uc_get_workspace,
     get_uc_list_workspaces,
-    get_uc_provide_feedback_article,
+    get_uc_publish_review,
     get_uc_reject_article,
+    get_uc_set_feedback_status,
     get_uc_submit_article,
     get_uc_update_article,
+    get_uc_withdraw_article,
 )
 from app.modules.workspaces.presentation.schema import (
+    AddReplyRequest,
     ArticleResponse,
     CreateArticleRequest,
+    CreateFeedbackRequest,
     CreateWorkspaceRequest,
+    FeedbackResponse,
+    RejectArticleRequest,
+    SetFeedbackStatusRequest,
     UpdateArticleRequest,
     WorkspaceListResponse,
     WorkspaceResponse,
@@ -211,26 +222,113 @@ async def approve_article(
 async def reject_article(
     workspace_id: str = Path(...),
     article_id: str = Path(...),
+    body: RejectArticleRequest = Body(...),
     current_user: User = Depends(require_permissions(Permission.ARTICLES_REVIEW)),
     uc=Depends(get_uc_reject_article),
 ):
     article = await uc.execute(
-        workspace_id=workspace_id, article_id=article_id, caller=current_user
+        workspace_id=workspace_id, article_id=article_id, caller=current_user, reason=body.reason
     )
     return create_success_response(ArticleResponse.from_model(article))
 
 
 @router.post(
-    "/{workspace_id}/articles/{article_id}/feedback",
+    "/{workspace_id}/articles/{article_id}/claim",
     response_model=StandardResponse[ArticleResponse],
 )
-async def provide_feedback_article(
+async def claim_article(
     workspace_id: str = Path(...),
     article_id: str = Path(...),
     current_user: User = Depends(require_permissions(Permission.ARTICLES_REVIEW)),
-    uc=Depends(get_uc_provide_feedback_article),
+    uc=Depends(get_uc_claim_article),
 ):
-    article = await uc.execute(
-        workspace_id=workspace_id, article_id=article_id, caller=current_user
-    )
+    article = await uc.execute(workspace_id=workspace_id, article_id=article_id, caller=current_user)
     return create_success_response(ArticleResponse.from_model(article))
+
+
+@router.post(
+    "/{workspace_id}/articles/{article_id}/withdraw",
+    response_model=StandardResponse[ArticleResponse],
+)
+async def withdraw_article(
+    workspace_id: str = Path(...),
+    article_id: str = Path(...),
+    current_user: User = Depends(require_permissions(Permission.ARTICLES_SUBMIT)),
+    uc=Depends(get_uc_withdraw_article),
+):
+    article = await uc.execute(workspace_id=workspace_id, article_id=article_id, caller=current_user)
+    return create_success_response(ArticleResponse.from_model(article))
+
+
+@router.post(
+    "/{workspace_id}/articles/{article_id}/feedbacks",
+    response_model=StandardResponse[FeedbackResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_feedback(
+    workspace_id: str = Path(...),
+    article_id: str = Path(...),
+    body: CreateFeedbackRequest = Body(...),
+    current_user: User = Depends(require_permissions(Permission.ARTICLES_REVIEW)),
+    uc=Depends(get_uc_create_feedback),
+):
+    anchor = FeedbackAnchor(**body.anchor.model_dump())
+    fb = await uc.execute(
+        workspace_id=workspace_id, article_id=article_id, caller=current_user,
+        body=body.body, anchor=anchor,
+    )
+    return create_success_response(FeedbackResponse.from_model(fb), "Feedback created")
+
+
+@router.patch(
+    "/{workspace_id}/articles/{article_id}/feedbacks/{feedback_id}",
+    response_model=StandardResponse[FeedbackResponse],
+)
+async def set_feedback_status(
+    workspace_id: str = Path(...),
+    article_id: str = Path(...),
+    feedback_id: str = Path(...),
+    body: SetFeedbackStatusRequest = Body(...),
+    current_user: User = Depends(require_permissions(Permission.ARTICLES_REVIEW)),
+    uc=Depends(get_uc_set_feedback_status),
+):
+    fb = await uc.execute(
+        workspace_id=workspace_id, article_id=article_id, feedback_id=feedback_id,
+        target=body.status, caller=current_user,
+    )
+    return create_success_response(FeedbackResponse.from_model(fb))
+
+
+@router.post(
+    "/{workspace_id}/articles/{article_id}/feedbacks/{feedback_id}/replies",
+    response_model=StandardResponse[FeedbackResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_reply(
+    workspace_id: str = Path(...),
+    article_id: str = Path(...),
+    feedback_id: str = Path(...),
+    body: AddReplyRequest = Body(...),
+    current_user: User = Depends(get_current_user),
+    uc=Depends(get_uc_add_reply),
+):
+    fb = await uc.execute(
+        workspace_id=workspace_id, article_id=article_id, feedback_id=feedback_id,
+        body=body.body, caller=current_user,
+    )
+    return create_success_response(FeedbackResponse.from_model(fb), "Reply added")
+
+
+@router.post(
+    "/{workspace_id}/articles/{article_id}/publish-review",
+    response_model=StandardResponse[ArticleResponse],
+)
+async def publish_review(
+    workspace_id: str = Path(...),
+    article_id: str = Path(...),
+    current_user: User = Depends(require_permissions(Permission.ARTICLES_REVIEW)),
+    uc=Depends(get_uc_publish_review),
+):
+    article = await uc.execute(workspace_id=workspace_id, article_id=article_id, caller=current_user)
+    return create_success_response(ArticleResponse.from_model(article))
+

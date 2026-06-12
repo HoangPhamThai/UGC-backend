@@ -8,8 +8,23 @@ from pymongo.asynchronous.collection import AsyncCollection
 from app.core.db import get_db
 from app.core.logging_mixin import LoggerMixin
 from app.core.time import date_to_storage
-from app.modules.workspaces.data.model import Article, ArticleStatus, Product, Workspace
-from app.modules.workspaces.domain.repo import ArticleRepo, WorkspaceRepo
+from app.modules.workspaces.data.model import (
+    Article,
+    ArticleEvent,
+    ArticleStatus,
+    AWAITING_QC_STATUSES,
+    Feedback,
+    FeedbackReply,
+    FeedbackStatus,
+    Product,
+    Workspace,
+)
+from app.modules.workspaces.domain.repo import (
+    ArticleEventRepo,
+    ArticleRepo,
+    FeedbackRepo,
+    WorkspaceRepo,
+)
 
 
 # --- Workspaces ---
@@ -267,17 +282,90 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
         status: ArticleStatus,
         reviewer_user_id: Optional[str] = None,
         set_reviewed_at: bool = False,
+        last_activity_by: Optional[str] = None,
+        increment_review_round: bool = False,
     ) -> Optional[Article]:
         coll = await self._get_collection()
         now = datetime.now(timezone.utc)
-        update: dict = {"status": status.value, "updated_at": now}
+        set_doc: dict = {"status": status.value, "updated_at": now}
         if reviewer_user_id is not None:
-            update["reviewer_user_id"] = reviewer_user_id
+            set_doc["reviewer_user_id"] = reviewer_user_id
         if set_reviewed_at:
-            update["reviewed_at"] = now
+            set_doc["reviewed_at"] = now
+        if last_activity_by is not None:
+            set_doc["last_activity_by"] = last_activity_by
+            set_doc["last_activity_at"] = now
+        update: dict = {"$set": set_doc}
+        if increment_review_round:
+            update["$inc"] = {"review_round": 1}
+        doc = await coll.find_one_and_update(
+            {"_id": article_id}, update, return_document=ReturnDocument.AFTER
+        )
+        return Article.model_validate(doc) if doc else None
+
+    @override
+    async def claim(self, article_id: str, qc_user_id: str) -> Optional[Article]:
+        coll = await self._get_collection()
+        now = datetime.now(timezone.utc)
+        # Conditional update: only claim when currently unclaimed AND awaiting QC.
+        # The status guard closes the TOCTOU window where a concurrent withdraw
+        # could flip the article to not_submitted between the use-case read and
+        # this update, which would otherwise leave a stale claim on a non-review
+        # article that persists across resubmit.
+        doc = await coll.find_one_and_update(
+            {
+                "_id": article_id,
+                "claimed_by": None,
+                "status": {"$in": [s.value for s in AWAITING_QC_STATUSES]},
+            },
+            {"$set": {"claimed_by": qc_user_id, "claimed_at": now, "updated_at": now}},
+            return_document=ReturnDocument.AFTER,
+        )
+        return Article.model_validate(doc) if doc else None
+
+    @override
+    async def withdraw(self, article_id: str, *, actor_id: str) -> Optional[Article]:
+        coll = await self._get_collection()
+        now = datetime.now(timezone.utc)
+        # Atomic: only withdraw while still submitted AND unclaimed.
+        doc = await coll.find_one_and_update(
+            {"_id": article_id, "status": ArticleStatus.SUBMITTED.value, "claimed_by": None},
+            {"$set": {
+                "status": ArticleStatus.NOT_SUBMITTED.value,
+                "last_activity_by": actor_id, "last_activity_at": now, "updated_at": now,
+            }},
+            return_document=ReturnDocument.AFTER,
+        )
+        return Article.model_validate(doc) if doc else None
+
+    @override
+    async def touch_activity(self, article_id: str, *, actor_id: str) -> None:
+        coll = await self._get_collection()
+        now = datetime.now(timezone.utc)
+        await coll.update_one(
+            {"_id": article_id},
+            {"$set": {"last_activity_by": actor_id, "last_activity_at": now, "updated_at": now}},
+        )
+
+    @override
+    async def reject(
+        self, article_id: str, *, reviewer_user_id: str, reason: str
+    ) -> Optional[Article]:
+        coll = await self._get_collection()
+        now = datetime.now(timezone.utc)
         doc = await coll.find_one_and_update(
             {"_id": article_id},
-            {"$set": update},
+            {"$set": {
+                "status": ArticleStatus.REJECTED.value,
+                "reviewer_user_id": reviewer_user_id,
+                "reviewed_at": now,
+                "reject_reason": reason,
+                "rejected_by": reviewer_user_id,
+                "rejected_at": now,
+                "last_activity_by": reviewer_user_id,
+                "last_activity_at": now,
+                "updated_at": now,
+            }},
             return_document=ReturnDocument.AFTER,
         )
         return Article.model_validate(doc) if doc else None
@@ -292,3 +380,114 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
         coll = await self._get_collection()
         result = await coll.delete_many({"workspace_id": workspace_id})
         return result.deleted_count
+
+
+class FeedbackDataRepository(LoggerMixin, FeedbackRepo):
+    def __init__(self) -> None:
+        self.collection_name: str = Feedback.Config.collection_name
+
+    async def _get_collection(self) -> AsyncCollection:
+        db = await get_db()
+        return db[self.collection_name]
+
+    async def ensure_indexes(self) -> None:
+        coll = await self._get_collection()
+        await coll.create_index([("article_id", ASCENDING), ("status", ASCENDING)])
+
+    @override
+    async def create(self, feedback: Feedback) -> Feedback:
+        coll = await self._get_collection()
+        await coll.insert_one(feedback.model_dump(by_alias=True))
+        return feedback
+
+    @override
+    async def get_by_id(self, feedback_id: str) -> Optional[Feedback]:
+        coll = await self._get_collection()
+        doc = await coll.find_one({"_id": feedback_id})
+        return Feedback.model_validate(doc) if doc else None
+
+    @override
+    async def list_by_article(
+        self, article_id: str, *, statuses: Optional[list[FeedbackStatus]] = None
+    ) -> list[Feedback]:
+        coll = await self._get_collection()
+        filt: dict = {"article_id": article_id}
+        if statuses is not None:
+            filt["status"] = {"$in": [s.value for s in statuses]}
+        cursor = coll.find(filt).sort("created_at", ASCENDING)
+        docs = [doc async for doc in cursor]
+        return [Feedback.model_validate(d) for d in docs]
+
+    @override
+    async def set_status(
+        self,
+        feedback_id: str,
+        *,
+        status: FeedbackStatus,
+        resolved_by: Optional[str] = None,
+        set_resolved_at: bool = False,
+        clear_resolved: bool = False,
+    ) -> Optional[Feedback]:
+        coll = await self._get_collection()
+        now = datetime.now(timezone.utc)
+        set_doc: dict = {"status": status.value, "updated_at": now}
+        if resolved_by is not None:
+            set_doc["resolved_by"] = resolved_by
+        if set_resolved_at:
+            set_doc["resolved_at"] = now
+        update: dict = {"$set": set_doc}
+        if clear_resolved:
+            update["$set"].pop("resolved_by", None)
+            update["$set"].pop("resolved_at", None)
+            update["$unset"] = {"resolved_by": "", "resolved_at": ""}
+        doc = await coll.find_one_and_update(
+            {"_id": feedback_id}, update, return_document=ReturnDocument.AFTER
+        )
+        return Feedback.model_validate(doc) if doc else None
+
+    @override
+    async def mark_drafts_open(self, article_id: str) -> int:
+        coll = await self._get_collection()
+        result = await coll.update_many(
+            {"article_id": article_id, "status": FeedbackStatus.DRAFT.value},
+            {"$set": {"status": FeedbackStatus.OPEN.value,
+                      "updated_at": datetime.now(timezone.utc)}},
+        )
+        return result.modified_count
+
+    @override
+    async def add_reply(self, feedback_id: str, reply: FeedbackReply) -> Optional[Feedback]:
+        coll = await self._get_collection()
+        doc = await coll.find_one_and_update(
+            {"_id": feedback_id},
+            {"$push": {"replies": reply.model_dump()},
+             "$set": {"updated_at": datetime.now(timezone.utc)}},
+            return_document=ReturnDocument.AFTER,
+        )
+        return Feedback.model_validate(doc) if doc else None
+
+    @override
+    async def count_open(self, article_id: str) -> int:
+        coll = await self._get_collection()
+        return await coll.count_documents(
+            {"article_id": article_id, "status": FeedbackStatus.OPEN.value}
+        )
+
+
+class ArticleEventDataRepository(LoggerMixin, ArticleEventRepo):
+    def __init__(self) -> None:
+        self.collection_name: str = ArticleEvent.Config.collection_name
+
+    async def _get_collection(self) -> AsyncCollection:
+        db = await get_db()
+        return db[self.collection_name]
+
+    async def ensure_indexes(self) -> None:
+        coll = await self._get_collection()
+        await coll.create_index([("article_id", ASCENDING), ("created_at", ASCENDING)])
+
+    @override
+    async def create(self, event: ArticleEvent) -> ArticleEvent:
+        coll = await self._get_collection()
+        await coll.insert_one(event.model_dump(by_alias=True))
+        return event

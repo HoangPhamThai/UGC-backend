@@ -1,4 +1,4 @@
-# app/modules/workspaces/domain/usecases/approve_article.py
+# app/modules/workspaces/domain/usecases/publish_review.py
 from dataclasses import dataclass
 
 from app.core.logging_mixin import LoggerMixin
@@ -9,7 +9,6 @@ from app.modules.workspaces.data.model import (
     ArticleEvent,
     ArticleEventType,
     ArticleStatus,
-    FeedbackStatus,
 )
 from app.modules.workspaces.domain.errors import ArticleNotFoundError, ArticleStateConflictError
 from app.modules.workspaces.domain.repo import ArticleEventRepo, ArticleRepo, FeedbackRepo
@@ -20,7 +19,7 @@ from app.modules.workspaces.domain.usecases._review_guard import (
 
 
 @dataclass(frozen=True)
-class ApproveArticleUseCase(LoggerMixin):
+class PublishReviewUseCase(LoggerMixin):
     article_repo: ArticleRepo
     feedback_repo: FeedbackRepo
     event_repo: ArticleEventRepo
@@ -34,30 +33,30 @@ class ApproveArticleUseCase(LoggerMixin):
             raise ArticleStateConflictError("Article is not awaiting review")
         ensure_claimed_by_caller(article, caller)
 
-        if await self.feedback_repo.count_open(article_id) > 0:
+        # Promote this session's drafts, then verify something is actually blocking.
+        await self.feedback_repo.mark_drafts_open(article_id)
+        open_count = await self.feedback_repo.count_open(article_id)
+        if open_count == 0:
             raise ArticleStateConflictError(
-                "Cannot approve while feedback is still open"
-            )
-
-        drafts = await self.feedback_repo.list_by_article(
-            article_id, statuses=[FeedbackStatus.DRAFT]
-        )
-        if drafts:
-            self.log_warning(
-                f"Approving article {article_id} with {len(drafts)} unpublished draft feedback(s) — they will be orphaned"
+                "No open feedback to send back; approve or add feedback first"
             )
 
         updated = await self.article_repo.update_status(
             article_id,
-            status=ArticleStatus.APPROVED,
+            status=ArticleStatus.FEEDBACK_PROVIDED,
             reviewer_user_id=caller.id,
             set_reviewed_at=True,
             last_activity_by=caller.id,
+            increment_review_round=True,
         )
         if updated is None:
             raise ArticleNotFoundError()
         await self.event_repo.create(
-            ArticleEvent(article_id=article_id, actor_id=caller.id, type=ArticleEventType.APPROVED)
+            ArticleEvent(
+                article_id=article_id, actor_id=caller.id,
+                type=ArticleEventType.REVIEW_PUBLISHED,
+                payload={"open_count": open_count, "round": updated.review_round},
+            )
         )
-        self.log_info(f"Article approved: id={article_id} reviewer={caller.id}")
+        self.log_info(f"Review published: article={article_id} open={open_count}")
         return updated

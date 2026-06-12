@@ -10,6 +10,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.modules.workspaces.domain.errors import (
     ArticleNotFoundError,
     ArticleStateConflictError,
+    ClaimConflictError,
+    FeedbackNotFoundError,
+    FeedbackStateConflictError,
     InvalidInputError,
     QcMisconfiguredError,
     WorkspaceError,
@@ -47,6 +50,9 @@ _DOMAIN_STATUS: dict[type[WorkspaceError], int] = {
     ArticleStateConflictError: 409,
     InvalidInputError: 400,
     QcMisconfiguredError: 500,
+    ClaimConflictError: 409,
+    FeedbackNotFoundError: 404,
+    FeedbackStateConflictError: 409,
 }
 
 
