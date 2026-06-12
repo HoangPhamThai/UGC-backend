@@ -104,6 +104,7 @@ def get_uc_submit_article() -> SubmitArticleUseCase:
     return SubmitArticleUseCase(
         workspace_repo=get_workspace_repo(),
         article_repo=get_article_repo(),
+        event_repo=get_event_repo(),
     )
 
 
