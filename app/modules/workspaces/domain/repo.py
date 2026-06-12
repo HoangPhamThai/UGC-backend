@@ -139,6 +139,24 @@ class ArticleRepo(ABC):
         ...
 
     @abstractmethod
+    async def list_by_products(
+        self,
+        products: Optional[list[Product]],
+        *,
+        statuses: Optional[list[ArticleStatus]],
+        skip: int,
+        limit: int,
+    ) -> list[Article]:
+        """Articles whose product is in `products` (None = all products), optionally
+        filtered by `statuses`, sorted by on_air_date ascending then created_at."""
+        ...
+
+    @abstractmethod
+    async def count_by_products(
+        self, products: Optional[list[Product]], *, statuses: Optional[list[ArticleStatus]]
+    ) -> int: ...
+
+    @abstractmethod
     async def delete(self, article_id: str) -> None: ...
 
     @abstractmethod
