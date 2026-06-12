@@ -4,10 +4,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 from app.modules.notifications.data.model import Notification, NotificationType
-
-
-def _epoch_ms(dt) -> int:
-    return int(dt.timestamp() * 1000)
+from app.core.model import to_epoch_ms as _epoch_ms
 
 
 class NotificationResponse(BaseModel):
