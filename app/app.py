@@ -13,6 +13,7 @@ from app.core.settings import settings
 from app.middlewares import setup_middleware
 from app.modules.admin.presentation.routes import router as admin_router
 from app.modules.auth.presentation.routes import router as auth_router
+from app.modules.notifications.data.repo import NotificationDataRepository
 from app.modules.users.data.model import UserRole
 from app.modules.users.data.repo import UserDataRepository
 from app.modules.users.domain.usecases.bootstrap_default_accounts import (
@@ -22,7 +23,6 @@ from app.modules.users.domain.usecases.bootstrap_default_accounts import (
 from app.modules.users.domain.usecases.create_user import CreateUserUseCase
 from app.modules.users.presentation.routes import router as users_router
 from app.modules.workspaces.data.model import Product
-from app.modules.notifications.data.repo import NotificationDataRepository
 from app.modules.workspaces.data.repo import (
     ArticleDataRepository,
     ArticleEventDataRepository,

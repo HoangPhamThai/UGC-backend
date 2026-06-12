@@ -85,3 +85,34 @@ async def test_notifying_repo_skips_non_notifying_event():
     )
     await repo.create(_event(ArticleEventType.CLAIMED, "u_qc"))
     assert len(inner.events) == 1 and len(notifs.items) == 0
+
+
+def test_rejected_notifies_creator():
+    n = build_notification(_event(ArticleEventType.REJECTED, "u_qc"),
+                           _article(), owner_user_id="u_creator")
+    assert n is not None and n.recipient_id == "u_creator"
+    assert n.type == NotificationType.REJECTED
+
+
+async def test_notifying_repo_gracefully_skips_missing_article():
+    inner = FakeArticleEventRepo()
+    notifs = FakeNotificationRepo()
+    repo = NotifyingEventRepo(
+        inner=inner, notification_repo=notifs,
+        article_repo=FakeArticleRepo([]),
+        workspace_repo=FakeWorkspaceRepo([]),
+    )
+    await repo.create(_event(ArticleEventType.APPROVED, "u_qc"))
+    assert len(inner.events) == 1 and len(notifs.items) == 0
+
+
+async def test_notifying_repo_gracefully_skips_missing_workspace():
+    inner = FakeArticleEventRepo()
+    notifs = FakeNotificationRepo()
+    repo = NotifyingEventRepo(
+        inner=inner, notification_repo=notifs,
+        article_repo=FakeArticleRepo([_article()]),
+        workspace_repo=FakeWorkspaceRepo([]),
+    )
+    await repo.create(_event(ArticleEventType.APPROVED, "u_qc"))
+    assert len(inner.events) == 1 and len(notifs.items) == 0
