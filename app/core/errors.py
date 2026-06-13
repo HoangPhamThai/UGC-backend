@@ -56,7 +56,7 @@ _DOMAIN_STATUS: dict[type[WorkspaceError], int] = {
 }
 
 
-async def domain_exception_handler(request: Request, exc: Exception):
+async def domain_exception_handler(request: Request, exc: WorkspaceError):
     status_code = _DOMAIN_STATUS.get(type(exc), 500)
     message = str(exc) if str(exc) else "Internal error"
     return JSONResponse(status_code=status_code, content=_envelope(message))

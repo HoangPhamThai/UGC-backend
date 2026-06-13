@@ -20,6 +20,22 @@ def _fb(fid, status):
     )
 
 
+async def test_publish_with_only_none_anchor_feedback(qc):
+    art = make_article(status=ArticleStatus.SUBMITTED, claimed_by="u_qc")
+    fb = Feedback(
+        id="fb_none", article_id="art_1", author_id="u_qc",
+        body="Overall tone", status=FeedbackStatus.DRAFT,
+        anchor=FeedbackAnchor(target_type=AnchorTargetType.NONE),
+    )
+    uc = PublishReviewUseCase(
+        article_repo=FakeArticleRepo([art]),
+        feedback_repo=FakeFeedbackRepo([fb]),
+        event_repo=FakeArticleEventRepo(),
+    )
+    result = await uc.execute(workspace_id="ws_1", article_id="art_1", caller=qc)
+    assert result.status == ArticleStatus.FEEDBACK_PROVIDED
+
+
 async def test_publish_flips_to_feedback_provided_and_opens_drafts(qc):
     art = make_article(status=ArticleStatus.SUBMITTED, claimed_by="u_qc")
     frepo = FakeFeedbackRepo([_fb("fb_1", FeedbackStatus.DRAFT), _fb("fb_2", FeedbackStatus.DRAFT)])

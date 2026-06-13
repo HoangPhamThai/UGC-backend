@@ -130,9 +130,7 @@ class WorkspaceDataRepository(LoggerMixin, WorkspaceRepo):
         await coll.delete_one({"_id": workspace_id})
 
     @override
-    async def increment_article_count(
-        self, workspace_id: str, *, by: int = 1
-    ) -> None:
+    async def increment_article_count(self, workspace_id: str, *, by: int = 1) -> None:
         coll = await self._get_collection()
         # On decrement, require the current count to be at least `|by|` so we
         # never write a negative value. On increment, no extra filter needed.
@@ -200,7 +198,9 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
 
     async def ensure_indexes(self) -> None:
         coll = await self._get_collection()
-        await coll.create_index([("workspace_id", ASCENDING), ("created_at", ASCENDING)])
+        await coll.create_index(
+            [("workspace_id", ASCENDING), ("created_at", ASCENDING)]
+        )
         await coll.create_index([("workspace_id", ASCENDING), ("product", ASCENDING)])
         await coll.create_index([("product", ASCENDING), ("status", ASCENDING)])
         await coll.create_index([("status", ASCENDING), ("on_air_date", ASCENDING)])
@@ -336,11 +336,19 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
         now = datetime.now(timezone.utc)
         # Atomic: only withdraw while still submitted AND unclaimed.
         doc = await coll.find_one_and_update(
-            {"_id": article_id, "status": ArticleStatus.SUBMITTED.value, "claimed_by": None},
-            {"$set": {
-                "status": ArticleStatus.NOT_SUBMITTED.value,
-                "last_activity_by": actor_id, "last_activity_at": now, "updated_at": now,
-            }},
+            {
+                "_id": article_id,
+                "status": ArticleStatus.SUBMITTED.value,
+                "claimed_by": None,
+            },
+            {
+                "$set": {
+                    "status": ArticleStatus.NOT_SUBMITTED.value,
+                    "last_activity_by": actor_id,
+                    "last_activity_at": now,
+                    "updated_at": now,
+                }
+            },
             return_document=ReturnDocument.AFTER,
         )
         return Article.model_validate(doc) if doc else None
@@ -351,7 +359,13 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
         now = datetime.now(timezone.utc)
         await coll.update_one(
             {"_id": article_id},
-            {"$set": {"last_activity_by": actor_id, "last_activity_at": now, "updated_at": now}},
+            {
+                "$set": {
+                    "last_activity_by": actor_id,
+                    "last_activity_at": now,
+                    "updated_at": now,
+                }
+            },
         )
 
     @override
@@ -362,18 +376,20 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
         now = datetime.now(timezone.utc)
         doc = await coll.find_one_and_update(
             {"_id": article_id},
-            {"$set": {
-                "status": ArticleStatus.REJECTED.value,
-                "reviewer_user_id": reviewer_user_id,
-                "reviewed_at": now,
-                "reject_reason": reason,
-                "rejected_by": reviewer_user_id,
-                "rejected_at": now,
-                "last_activity_by": reviewer_user_id,
-                "last_activity_at": now,
-                "updated_at": now,
-                "reviewed_content": None,
-            }},
+            {
+                "$set": {
+                    "status": ArticleStatus.REJECTED.value,
+                    "reviewer_user_id": reviewer_user_id,
+                    "reviewed_at": now,
+                    "reject_reason": reason,
+                    "rejected_by": reviewer_user_id,
+                    "rejected_at": now,
+                    "last_activity_by": reviewer_user_id,
+                    "last_activity_at": now,
+                    "updated_at": now,
+                    "reviewed_content": None,
+                }
+            },
             return_document=ReturnDocument.AFTER,
         )
         return Article.model_validate(doc) if doc else None
@@ -405,7 +421,9 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
     @override
     async def count_by_products(self, products, *, statuses) -> int:
         coll = await self._get_collection()
-        return await coll.count_documents(self._product_status_filter(products, statuses))
+        return await coll.count_documents(
+            self._product_status_filter(products, statuses)
+        )
 
     @override
     async def delete(self, article_id: str) -> None:
@@ -487,18 +505,26 @@ class FeedbackDataRepository(LoggerMixin, FeedbackRepo):
         coll = await self._get_collection()
         result = await coll.update_many(
             {"article_id": article_id, "status": FeedbackStatus.DRAFT.value},
-            {"$set": {"status": FeedbackStatus.OPEN.value,
-                      "updated_at": datetime.now(timezone.utc)}},
+            {
+                "$set": {
+                    "status": FeedbackStatus.OPEN.value,
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
         )
         return result.modified_count
 
     @override
-    async def add_reply(self, feedback_id: str, reply: FeedbackReply) -> Optional[Feedback]:
+    async def add_reply(
+        self, feedback_id: str, reply: FeedbackReply
+    ) -> Optional[Feedback]:
         coll = await self._get_collection()
         doc = await coll.find_one_and_update(
             {"_id": feedback_id},
-            {"$push": {"replies": reply.model_dump()},
-             "$set": {"updated_at": datetime.now(timezone.utc)}},
+            {
+                "$push": {"replies": reply.model_dump()},
+                "$set": {"updated_at": datetime.now(timezone.utc)},
+            },
             return_document=ReturnDocument.AFTER,
         )
         return Feedback.model_validate(doc) if doc else None
@@ -509,6 +535,22 @@ class FeedbackDataRepository(LoggerMixin, FeedbackRepo):
         return await coll.count_documents(
             {"article_id": article_id, "status": FeedbackStatus.OPEN.value}
         )
+
+    @override
+    async def update_body(self, feedback_id: str, body: str) -> Optional[Feedback]:
+        coll = await self._get_collection()
+        doc = await coll.find_one_and_update(
+            {"_id": feedback_id},
+            {"$set": {"body": body, "updated_at": datetime.now(timezone.utc)}},
+            return_document=ReturnDocument.AFTER,
+        )
+        return Feedback.model_validate(doc) if doc else None
+
+    @override
+    async def delete(self, feedback_id: str) -> bool:
+        coll = await self._get_collection()
+        result = await coll.delete_one({"_id": feedback_id})
+        return result.deleted_count > 0
 
 
 class ArticleEventDataRepository(LoggerMixin, ArticleEventRepo):

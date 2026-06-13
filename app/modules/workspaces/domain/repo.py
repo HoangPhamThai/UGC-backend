@@ -125,7 +125,8 @@ class ArticleRepo(ABC):
     async def withdraw(self, article_id: str, *, actor_id: str) -> Optional[Article]:
         """Atomically flip submitted -> not_submitted only if currently SUBMITTED
         AND unclaimed (claimed_by is null). Sets last_activity. Returns the updated
-        Article, or None if the precondition no longer holds (lost to a concurrent claim)."""
+        Article, or None if the precondition no longer holds (lost to a concurrent claim).
+        """
         ...
 
     @abstractmethod
@@ -155,7 +156,10 @@ class ArticleRepo(ABC):
 
     @abstractmethod
     async def count_by_products(
-        self, products: Optional[list[Product]], *, statuses: Optional[list[ArticleStatus]]
+        self,
+        products: Optional[list[Product]],
+        *,
+        statuses: Optional[list[ArticleStatus]],
     ) -> int: ...
 
     @abstractmethod
@@ -197,12 +201,20 @@ class FeedbackRepo(ABC):
         ...
 
     @abstractmethod
-    async def add_reply(self, feedback_id: str, reply: FeedbackReply) -> Optional[Feedback]: ...
+    async def add_reply(
+        self, feedback_id: str, reply: FeedbackReply
+    ) -> Optional[Feedback]: ...
 
     @abstractmethod
     async def count_open(self, article_id: str) -> int:
         """Number of feedbacks in OPEN status for the article."""
         ...
+
+    @abstractmethod
+    async def update_body(self, feedback_id: str, body: str) -> Optional[Feedback]: ...
+
+    @abstractmethod
+    async def delete(self, feedback_id: str) -> bool: ...
 
 
 class ArticleEventRepo(ABC):

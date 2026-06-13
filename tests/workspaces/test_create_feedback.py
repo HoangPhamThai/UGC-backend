@@ -18,6 +18,10 @@ def _text_anchor():
     )
 
 
+def _none_anchor():
+    return FeedbackAnchor(target_type=AnchorTargetType.NONE)
+
+
 async def test_create_feedback_saves_draft(qc):
     art = make_article(status=ArticleStatus.SUBMITTED, claimed_by="u_qc")
     frepo = FakeFeedbackRepo()
@@ -32,6 +36,20 @@ async def test_create_feedback_saves_draft(qc):
     assert fb.author_id == qc.id
     assert fb.anchor.quote == "hello"
     assert frepo.items[fb.id].status == FeedbackStatus.DRAFT
+
+
+async def test_create_feedback_with_none_anchor(qc):
+    art = make_article(status=ArticleStatus.SUBMITTED, claimed_by="u_qc")
+    frepo = FakeFeedbackRepo()
+    uc = CreateFeedbackUseCase(article_repo=FakeArticleRepo([art]), feedback_repo=frepo)
+
+    fb = await uc.execute(
+        workspace_id="ws_1", article_id="art_1", caller=qc,
+        body="Rewrite intro", anchor=_none_anchor(),
+    )
+
+    assert fb.status == FeedbackStatus.DRAFT
+    assert fb.anchor.target_type == AnchorTargetType.NONE
 
 
 async def test_create_feedback_without_claim_raises(qc):

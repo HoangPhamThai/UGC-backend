@@ -25,21 +25,29 @@ from app.modules.workspaces.domain.usecases.create_workspace import (
     CreateWorkspaceUseCase,
 )
 from app.modules.workspaces.domain.usecases.delete_article import DeleteArticleUseCase
+from app.modules.workspaces.domain.usecases.delete_feedback import DeleteFeedbackUseCase
 from app.modules.workspaces.domain.usecases.delete_workspace import (
     DeleteWorkspaceUseCase,
 )
 from app.modules.workspaces.domain.usecases.get_workspace import GetWorkspaceUseCase
 from app.modules.workspaces.domain.usecases.list_feedbacks import ListFeedbacksUseCase
-from app.modules.workspaces.domain.usecases.list_review_queue import ListReviewQueueUseCase
+from app.modules.workspaces.domain.usecases.list_review_queue import (
+    ListReviewQueueUseCase,
+)
 from app.modules.workspaces.domain.usecases.list_workspaces import (
     ListWorkspacesUseCase,
 )
 from app.modules.workspaces.domain.usecases.publish_review import PublishReviewUseCase
 from app.modules.workspaces.domain.usecases.reject_article import RejectArticleUseCase
-from app.modules.workspaces.domain.usecases.set_feedback_status import SetFeedbackStatusUseCase
+from app.modules.workspaces.domain.usecases.set_feedback_status import (
+    SetFeedbackStatusUseCase,
+)
 from app.modules.workspaces.domain.usecases.submit_article import SubmitArticleUseCase
 from app.modules.workspaces.domain.usecases.update_article import UpdateArticleUseCase
-from app.modules.workspaces.domain.usecases.withdraw_article import WithdrawArticleUseCase
+from app.modules.workspaces.domain.usecases.update_feedback import UpdateFeedbackUseCase
+from app.modules.workspaces.domain.usecases.withdraw_article import (
+    WithdrawArticleUseCase,
+)
 
 
 @lru_cache(maxsize=1)
@@ -144,7 +152,9 @@ def get_uc_reject_article() -> RejectArticleUseCase:
 
 
 def get_uc_claim_article() -> ClaimArticleUseCase:
-    return ClaimArticleUseCase(article_repo=get_article_repo(), event_repo=get_event_repo())
+    return ClaimArticleUseCase(
+        article_repo=get_article_repo(), event_repo=get_event_repo()
+    )
 
 
 def get_uc_withdraw_article() -> WithdrawArticleUseCase:
@@ -166,6 +176,18 @@ def get_uc_set_feedback_status() -> SetFeedbackStatusUseCase:
         article_repo=get_article_repo(),
         feedback_repo=get_feedback_repo(),
         event_repo=get_event_repo(),
+    )
+
+
+def get_uc_update_feedback() -> UpdateFeedbackUseCase:
+    return UpdateFeedbackUseCase(
+        article_repo=get_article_repo(), feedback_repo=get_feedback_repo()
+    )
+
+
+def get_uc_delete_feedback() -> DeleteFeedbackUseCase:
+    return DeleteFeedbackUseCase(
+        article_repo=get_article_repo(), feedback_repo=get_feedback_repo()
     )
 
 

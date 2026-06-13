@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import pytest
 
 from app.modules.users.data.model import UserRole
@@ -69,3 +71,31 @@ async def test_other_qc_does_not_see_foreign_draft():
     uc = _ctx([_fb("f1", FeedbackStatus.OPEN), _fb("f2", FeedbackStatus.DRAFT, author="u_qc")])
     result = await uc.execute(workspace_id="ws_1", article_id="art_1", caller=other_qc)
     assert {f.id for f in result} == {"f1"}  # sees open, NOT the other QC's draft
+
+
+def test_feedback_model_accepts_legacy_null_anchor_as_none():
+    now = datetime.now(timezone.utc)
+    fb = Feedback.model_validate(
+        {
+            "_id": "fb_legacy",
+            "article_id": "art_1",
+            "author_id": "u_qc",
+            "body": "legacy note",
+            "status": "open",
+            "anchor": None,
+            "created_at": now,
+            "updated_at": now,
+        }
+    )
+    assert fb.anchor.target_type == AnchorTargetType.NONE
+    assert fb.anchor.quote == ""
+
+
+def test_feedback_model_accepts_explicit_none_anchor():
+    fb = Feedback(
+        article_id="art_1",
+        author_id="u_qc",
+        body="whole article",
+        anchor=FeedbackAnchor(target_type=AnchorTargetType.NONE),
+    )
+    assert fb.anchor.target_type == AnchorTargetType.NONE

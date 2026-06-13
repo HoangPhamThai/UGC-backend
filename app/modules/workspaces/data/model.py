@@ -1,9 +1,9 @@
 # app/modules/workspaces/data/model.py
 from datetime import date, datetime, timezone
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.core.model import BaseMongoModel, make_prefixed_id
 
@@ -63,6 +63,7 @@ class FeedbackStatus(str, Enum):
 class AnchorTargetType(str, Enum):
     TEXT = "text"
     IMAGE = "image"
+    NONE = "none"
 
 
 class ArticleEventType(str, Enum):
@@ -168,6 +169,17 @@ class Feedback(BaseMongoModel):
     replies: list[FeedbackReply] = Field(default_factory=list)
     resolved_by: Optional[str] = Field(default=None)
     resolved_at: Optional[datetime] = Field(default=None)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _default_null_anchor(cls, data: Any) -> Any:
+        # Legacy rows (pre-anchor MVP) may have anchor=null — coerce so list/get works.
+        if isinstance(data, dict) and not data.get("anchor"):
+            return {
+                **data,
+                "anchor": {"target_type": AnchorTargetType.NONE},
+            }
+        return data
 
     class Config:
         collection_name = "feedbacks"

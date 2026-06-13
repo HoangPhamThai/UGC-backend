@@ -118,9 +118,11 @@ class WorkspaceResponse(BaseModel):
             updated_at=_to_epoch_ms(ws.updated_at),
             article_count=article_count,
             products=products,
-            articles=[ArticleResponse.from_model(a) for a in articles]
-            if articles is not None
-            else None,
+            articles=(
+                [ArticleResponse.from_model(a) for a in articles]
+                if articles is not None
+                else None
+            ),
         )
 
 
@@ -146,11 +148,19 @@ class ReviewQueueItemResponse(BaseModel):
     @classmethod
     def from_model(cls, a: Article) -> "ReviewQueueItemResponse":
         return cls(
-            id=a.id, workspace_id=a.workspace_id, name=a.name, product=a.product,
-            status=a.status, on_air_date=a.on_air_date,
-            claimed_by=a.claimed_by, review_round=a.review_round,
-            last_activity_at=_to_epoch_ms(a.last_activity_at) if a.last_activity_at else None,
-            created_at=_to_epoch_ms(a.created_at), updated_at=_to_epoch_ms(a.updated_at),
+            id=a.id,
+            workspace_id=a.workspace_id,
+            name=a.name,
+            product=a.product,
+            status=a.status,
+            on_air_date=a.on_air_date,
+            claimed_by=a.claimed_by,
+            review_round=a.review_round,
+            last_activity_at=(
+                _to_epoch_ms(a.last_activity_at) if a.last_activity_at else None
+            ),
+            created_at=_to_epoch_ms(a.created_at),
+            updated_at=_to_epoch_ms(a.updated_at),
         )
 
 
@@ -160,6 +170,7 @@ class ReviewQueueResponse(BaseModel):
 
 
 # --- QC review requests ---
+
 
 class AnchorRequest(BaseModel):
     target_type: AnchorTargetType
@@ -171,6 +182,24 @@ class AnchorRequest(BaseModel):
     image_ref: Optional[str] = None
     image_occurrence: Optional[int] = None
 
+    @model_validator(mode="after")
+    def _validate_none_anchor(self) -> "AnchorRequest":
+        if self.target_type != AnchorTargetType.NONE:
+            return self
+        if (
+            self.quote
+            or self.prefix
+            or self.suffix
+            or self.image_ref is not None
+            or self.image_occurrence is not None
+            or self.start_offset is not None
+            or self.end_offset is not None
+        ):
+            raise ValueError(
+                "none anchor must not carry quote, offsets, or image fields"
+            )
+        return self
+
 
 class CreateFeedbackRequest(BaseModel):
     body: str = Field(default="", max_length=5000)
@@ -178,7 +207,13 @@ class CreateFeedbackRequest(BaseModel):
 
 
 class SetFeedbackStatusRequest(BaseModel):
-    status: Literal[FeedbackStatus.OPEN, FeedbackStatus.RESOLVED, FeedbackStatus.DISMISSED]
+    status: Literal[
+        FeedbackStatus.OPEN, FeedbackStatus.RESOLVED, FeedbackStatus.DISMISSED
+    ]
+
+
+class UpdateFeedbackBodyRequest(BaseModel):
+    body: str = Field(..., min_length=1, max_length=5000)
 
 
 class AddReplyRequest(BaseModel):
@@ -191,6 +226,7 @@ class RejectArticleRequest(BaseModel):
 
 # --- QC review responses ---
 
+
 class ReplyResponse(BaseModel):
     id: str
     author_id: str
@@ -199,8 +235,12 @@ class ReplyResponse(BaseModel):
 
     @classmethod
     def from_model(cls, r: FeedbackReply) -> "ReplyResponse":
-        return cls(id=r.id, author_id=r.author_id, body=r.body,
-                   created_at=_to_epoch_ms(r.created_at))
+        return cls(
+            id=r.id,
+            author_id=r.author_id,
+            body=r.body,
+            created_at=_to_epoch_ms(r.created_at),
+        )
 
 
 class FeedbackResponse(BaseModel):
@@ -221,13 +261,20 @@ class FeedbackResponse(BaseModel):
     @classmethod
     def from_model(cls, f: Feedback) -> "FeedbackResponse":
         return cls(
-            id=f.id, article_id=f.article_id, author_id=f.author_id, body=f.body,
+            id=f.id,
+            article_id=f.article_id,
+            author_id=f.author_id,
+            body=f.body,
             status=f.status,
             anchor=AnchorRequest(
-                target_type=f.anchor.target_type, quote=f.anchor.quote,
-                prefix=f.anchor.prefix, suffix=f.anchor.suffix,
-                start_offset=f.anchor.start_offset, end_offset=f.anchor.end_offset,
-                image_ref=f.anchor.image_ref, image_occurrence=f.anchor.image_occurrence,
+                target_type=f.anchor.target_type,
+                quote=f.anchor.quote,
+                prefix=f.anchor.prefix,
+                suffix=f.anchor.suffix,
+                start_offset=f.anchor.start_offset,
+                end_offset=f.anchor.end_offset,
+                image_ref=f.anchor.image_ref,
+                image_occurrence=f.anchor.image_occurrence,
             ),
             replies=[ReplyResponse.from_model(r) for r in f.replies],
             resolved_by=f.resolved_by,
