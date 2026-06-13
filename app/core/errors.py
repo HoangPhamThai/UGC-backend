@@ -19,6 +19,8 @@ from app.modules.workspaces.domain.errors import (
     WorkspaceNameTakenError,
     WorkspaceNotFoundError,
 )
+from app.modules.statistics.domain.errors import CreatorNotFoundError, StatisticsError
+from app.modules.chat.domain.errors import ChatError, ChatSessionNotFoundError
 
 
 def _envelope(message: str) -> dict:
@@ -62,8 +64,34 @@ async def domain_exception_handler(request: Request, exc: WorkspaceError):
     return JSONResponse(status_code=status_code, content=_envelope(message))
 
 
+_STATISTICS_STATUS: dict[type[StatisticsError], int] = {
+    CreatorNotFoundError: 404,
+}
+
+
+async def statistics_exception_handler(request: Request, exc: StatisticsError):
+    status_code = _STATISTICS_STATUS.get(type(exc), 500)
+    message = str(exc) if str(exc) else "Internal error"
+    return JSONResponse(status_code=status_code, content=_envelope(message))
+
+
+_CHAT_STATUS: dict[type[ChatError], int] = {
+    ChatSessionNotFoundError: 404,
+}
+
+
+async def chat_exception_handler(request: Request, exc: ChatError):
+    status_code = _CHAT_STATUS.get(type(exc), 500)
+    message = str(exc) if str(exc) else "Internal error"
+    return JSONResponse(status_code=status_code, content=_envelope(message))
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     for exc_cls in _DOMAIN_STATUS:
         app.add_exception_handler(exc_cls, domain_exception_handler)
+    for exc_cls in _STATISTICS_STATUS:
+        app.add_exception_handler(exc_cls, statistics_exception_handler)
+    for exc_cls in _CHAT_STATUS:
+        app.add_exception_handler(exc_cls, chat_exception_handler)

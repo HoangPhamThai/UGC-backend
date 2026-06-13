@@ -1,0 +1,41 @@
+# app/modules/statistics/presentation/deps.py
+from fastapi import Depends
+
+from app.modules.statistics.data.repo import StatisticsDataRepository
+from app.modules.statistics.domain.repo import StatisticsRepo
+from app.modules.statistics.domain.usecases.get_summary import GetSummaryUseCase
+from app.modules.statistics.domain.usecases.get_qc_breakdown import (
+    GetQcBreakdownUseCase,
+)
+from app.modules.statistics.domain.usecases.list_creators import ListCreatorsUseCase
+from app.modules.statistics.domain.usecases.list_creator_articles import (
+    ListCreatorArticlesUseCase,
+)
+
+
+def get_statistics_repo() -> StatisticsRepo:
+    return StatisticsDataRepository()
+
+
+def get_uc_get_summary(
+    repo: StatisticsRepo = Depends(get_statistics_repo),
+) -> GetSummaryUseCase:
+    return GetSummaryUseCase(repo=repo)
+
+
+def get_uc_get_qc_breakdown(
+    repo: StatisticsRepo = Depends(get_statistics_repo),
+) -> GetQcBreakdownUseCase:
+    return GetQcBreakdownUseCase(repo=repo)
+
+
+def get_uc_list_creators(
+    repo: StatisticsRepo = Depends(get_statistics_repo),
+) -> ListCreatorsUseCase:
+    return ListCreatorsUseCase(repo=repo)
+
+
+def get_uc_list_creator_articles(
+    repo: StatisticsRepo = Depends(get_statistics_repo),
+) -> ListCreatorArticlesUseCase:
+    return ListCreatorArticlesUseCase(repo=repo)

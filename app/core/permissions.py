@@ -1,8 +1,8 @@
 from enum import Enum
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_principal
 from app.modules.users.data.model import User, UserRole
 
 
@@ -27,6 +27,8 @@ class Permission(str, Enum):
     ARTICLES_DELETE = "articles:delete"
     ARTICLES_SUBMIT = "articles:submit"
     ARTICLES_REVIEW = "articles:review"
+    # --- Statistics (read-only aggregates) ---
+    STATS_READ = "stats:read"
 
 
 ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
@@ -38,6 +40,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
             Permission.USERS_READ_CREATOR,
             Permission.USERS_UPDATE_QC,
             Permission.WORKSPACES_READ_ANY,
+            Permission.STATS_READ,
         }
     ),
     UserRole.QC: frozenset(
@@ -58,6 +61,17 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
         }
     ),
 }
+
+
+# Permissions an interim key (agent acting for an admin) may exercise. Read/stat
+# only — never mutations. The chat/memory endpoints don't go through
+# require_permissions, so they are reachable independently of this set.
+INTERIM_ALLOWED_PERMISSIONS: frozenset[Permission] = frozenset({Permission.STATS_READ})
+
+
+def interim_key_allows(needed) -> bool:
+    """True iff every required permission is interim-allowed."""
+    return all(p in INTERIM_ALLOWED_PERMISSIONS for p in needed)
 
 
 _CREATE_PERMISSION_BY_ROLE: dict[UserRole, Permission] = {
@@ -95,9 +109,17 @@ def has_permission(user: User, permission: Permission) -> bool:
 
 
 def require_permissions(*needed: Permission):
-    def dep(user: User = Depends(get_current_user)) -> User:
+    def dep(
+        request: Request,
+        user: User = Depends(get_current_principal),
+    ) -> User:
         granted = ROLE_PERMISSIONS[user.role]
         if not all(p in granted for p in needed):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+        if getattr(request.state, "is_interim", False) and not interim_key_allows(needed):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions",

@@ -24,3 +24,15 @@ def date_to_storage(d: date) -> datetime:
     to `date`).
     """
     return datetime.combine(d, time.min, tzinfo=timezone.utc)
+
+
+def business_day_start_utc(d: date) -> datetime:
+    """Inclusive start of calendar day `d` (00:00 in the business tz) as an
+    aware UTC datetime. Used to lower-bound a `created_at` window filter."""
+    return datetime.combine(d, time.min, tzinfo=BUSINESS_TZ).astimezone(timezone.utc)
+
+
+def business_day_end_utc(d: date) -> datetime:
+    """Inclusive end of calendar day `d` (23:59:59.999999 in the business tz)
+    as an aware UTC datetime. Used to upper-bound a `created_at` window filter."""
+    return datetime.combine(d, time.max, tzinfo=BUSINESS_TZ).astimezone(timezone.utc)

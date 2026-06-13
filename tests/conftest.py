@@ -17,12 +17,22 @@ from app.modules.workspaces.data.model import (
 )
 from app.modules.notifications.data.model import Notification
 from app.modules.notifications.domain.repo import NotificationRepo
+from app.modules.statistics.domain.repo import (
+    ArticleStat,
+    CreatorRef,
+    QcRef,
+    StatisticsRepo,
+)
 from app.modules.workspaces.domain.repo import (
     ArticleEventRepo,
     ArticleRepo,
     FeedbackRepo,
     WorkspaceRepo,
 )
+from app.modules.interim_keys.data.model import InterimKey
+from app.modules.interim_keys.domain.repo import InterimKeyRepo
+from app.modules.chat.data.model import ChatMessage, ChatRole, ChatSession
+from app.modules.chat.domain.repo import ChatSessionRepo, ChatSessionSummary
 
 
 def _now() -> datetime:
@@ -329,6 +339,159 @@ class FakeNotificationRepo(NotificationRepo):
         return c
 
 
+class FakeStatisticsRepo(StatisticsRepo):
+    def __init__(
+        self,
+        *,
+        stats: Optional[list[ArticleStat]] = None,
+        auto_ids: Optional[set[str]] = None,
+        creators: Optional[list[CreatorRef]] = None,
+        qcs: Optional[list[QcRef]] = None,
+    ) -> None:
+        self._stats = list(stats or [])
+        self._auto = set(auto_ids or set())
+        self._creators = list(creators or [])
+        self._qcs = list(qcs or [])
+
+    async def list_article_stats(
+        self,
+        *,
+        from_dt=None,
+        to_dt=None,
+        product=None,
+        creator_id=None,
+        include_not_submitted,
+    ):
+        out = []
+        for a in self._stats:
+            if from_dt is not None and a.created_at < from_dt:
+                continue
+            if to_dt is not None and a.created_at > to_dt:
+                continue
+            if product is not None and a.product != product:
+                continue
+            if creator_id is not None and a.owner_user_id != creator_id:
+                continue
+            if not include_not_submitted and a.status == ArticleStatus.NOT_SUBMITTED:
+                continue
+            out.append(a)
+        return out
+
+    async def auto_approved_article_ids(self):
+        return set(self._auto)
+
+    async def list_creators(self, *, q):
+        return [
+            c for c in self._creators
+            if q is None or q.lower() in c.email.lower()
+        ]
+
+    async def get_creator(self, creator_id):
+        return next((c for c in self._creators if c.id == creator_id), None)
+
+    async def list_qcs(self):
+        return list(self._qcs)
+
+
+class FakeInterimKeyRepo(InterimKeyRepo):
+    def __init__(self, keys: Optional[list[InterimKey]] = None) -> None:
+        self.items: dict[str, InterimKey] = {k.id: k for k in (keys or [])}
+
+    async def create(self, key):
+        self.items[key.id] = key
+        return key
+
+    async def get_active_by_hash(self, key_hash, now):
+        for k in self.items.values():
+            if k.key_hash == key_hash and k.expires_at > now:
+                return k
+        return None
+
+    async def delete_by_hash(self, key_hash) -> bool:
+        match = [kid for kid, k in self.items.items() if k.key_hash == key_hash]
+        for kid in match:
+            del self.items[kid]
+        return bool(match)
+
+
+def make_article_stat(
+    *,
+    aid="art_1",
+    name="A",
+    product=Product.CL,
+    status=ArticleStatus.SUBMITTED,
+    owner_user_id="u_creator",
+    claimed_by=None,
+    reviewer_user_id=None,
+    rejected_by=None,
+    created_at=None,
+    on_air_date=None,
+) -> ArticleStat:
+    return ArticleStat(
+        id=aid,
+        name=name,
+        product=product,
+        status=status,
+        on_air_date=on_air_date or (date.today() + timedelta(days=7)),
+        created_at=created_at or _now(),
+        owner_user_id=owner_user_id,
+        claimed_by=claimed_by,
+        reviewer_user_id=reviewer_user_id,
+        rejected_by=rejected_by,
+    )
+
+
+class FakeChatSessionRepo(ChatSessionRepo):
+    def __init__(self, sessions: Optional[list[ChatSession]] = None) -> None:
+        self.items: dict[str, ChatSession] = {s.id: s for s in (sessions or [])}
+
+    async def create(self, session):
+        self.items[session.id] = session
+        return session
+
+    async def get_by_id(self, session_id):
+        return self.items.get(session_id)
+
+    async def list_summaries_by_owner(self, user_id, *, skip, limit):
+        owned = [s for s in self.items.values() if s.user_id == user_id]
+        owned.sort(key=lambda s: s.updated_at, reverse=True)
+        page = owned[skip : skip + limit]
+        return [
+            ChatSessionSummary(
+                id=s.id,
+                title=s.title,
+                message_count=len(s.messages),
+                created_at=s.created_at,
+                updated_at=s.updated_at,
+            )
+            for s in page
+        ]
+
+    async def count_by_owner(self, user_id):
+        return sum(1 for s in self.items.values() if s.user_id == user_id)
+
+    async def delete(self, session_id):
+        self.items.pop(session_id, None)
+
+    async def append_messages(self, session_id, messages, *, title):
+        s = self.items.get(session_id)
+        if s is None:
+            return None
+        s.messages.extend(messages)
+        if title is not None:
+            s.title = title
+        s.updated_at = _now()
+        return s
+
+    async def clear_messages(self, session_id):
+        s = self.items.get(session_id)
+        if s is None:
+            return None
+        s.messages = []
+        s.updated_at = _now()
+        return s
+
+
 # --- Builders / fixtures ---
 
 
@@ -363,6 +526,12 @@ def make_article(
         on_air_date=date.today() + timedelta(days=7),
         status=status,
         claimed_by=claimed_by,
+    )
+
+
+def make_chat_session(*, sid="cs_1", user_id="u_admin", title="", messages=None) -> ChatSession:
+    return ChatSession(
+        id=sid, user_id=user_id, title=title, messages=messages or []
     )
 
 

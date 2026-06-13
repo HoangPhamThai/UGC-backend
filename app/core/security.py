@@ -52,3 +52,7 @@ def decode_token(token: str) -> dict:
 
 def hash_refresh_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode()).hexdigest()
+
+
+def hash_interim_key(raw_key: str) -> str:
+    return hashlib.sha256(raw_key.encode()).hexdigest()
