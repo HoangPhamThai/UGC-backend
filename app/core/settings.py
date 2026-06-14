@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     # Comma-separated list of product codes the default QC covers, e.g. "CL,MMF".
     qc_products: Optional[str] = Field(default=None, alias="QC_PRODUCTS")
 
+    # --- MinIO object storage (acceptance reports) ---
+    minio_endpoint: str = Field(default="minio:9000", alias="MINIO_ENDPOINT")
+    minio_access_key: str = Field(default="minioadmin", alias="MINIO_ACCESS_KEY")
+    minio_secret_key: str = Field(default="minioadmin", alias="MINIO_SECRET_KEY")
+    minio_bucket: str = Field(default="acceptance-reports", alias="MINIO_BUCKET")
+    minio_secure: bool = Field(default=False, alias="MINIO_SECURE")
+
     class Config:
         env_file = ".env"
         case_sensitive = False
