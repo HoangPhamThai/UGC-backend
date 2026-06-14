@@ -1,20 +1,17 @@
-# Use an official Python runtime as a parent image
-FROM python:3.12-slim
+# Official Playwright image (Ubuntu Noble = Python 3.12) with Chromium + all
+# browser OS deps preinstalled. Avoids `playwright install --with-deps` failing
+# on Debian (python:3.12-slim), which Playwright doesn't officially support.
+# Keep this tag's version in lockstep with playwright in requirements.txt.
+FROM mcr.microsoft.com/playwright/python:v1.49.0-noble
 
 WORKDIR /app
-# Set the working directory
 
 # Copy requirements first for better caching
 COPY requirements.txt .
 COPY .env .
 
-RUN apt-get update
-
-# Install dependencies
+# Install dependencies (playwright==1.49.0 matches the browsers baked into the image)
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Threads scraping uses Playwright/Chromium. Install the browser + its OS deps.
-RUN python -m playwright install --with-deps chromium
 
 # Copy the rest of the application code
 COPY ./app ./app
