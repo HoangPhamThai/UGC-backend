@@ -8,6 +8,7 @@ from app.core.model import to_epoch_ms as _to_epoch_ms
 from app.modules.reports.data.model import AcceptanceReport, ReportStatus
 from app.modules.reports.domain.repo import EligibleArticle
 from app.modules.reports.domain.usecases.list_eligible import EligibleCreatorGroup
+from app.modules.reports.domain.usecases.report_statistics import ReportStatistics
 
 
 # --- Requests ---
@@ -76,4 +77,19 @@ class ReportResponse(BaseModel):
             tax=r.tax, final_award=r.final_award, final_award_verbal=r.final_award_verbal,
             created_at=_to_epoch_ms(r.created_at),
             finalized_at=_to_epoch_ms(r.finalized_at) if r.finalized_at else None,
+        )
+
+
+class ReportStatisticsResponse(BaseModel):
+    period: Optional[str] = None
+    draft_count: int
+    final_count: int
+    creator_count: int
+    total_final_award: int
+
+    @classmethod
+    def from_stats(cls, s: ReportStatistics) -> "ReportStatisticsResponse":
+        return cls(
+            period=s.period, draft_count=s.draft_count, final_count=s.final_count,
+            creator_count=s.creator_count, total_final_award=s.total_final_award,
         )

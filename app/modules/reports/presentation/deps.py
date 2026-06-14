@@ -17,6 +17,7 @@ from app.modules.reports.domain.usecases.query_reports import (
     ListMyReportsUseCase,
     ListReportsUseCase,
 )
+from app.modules.reports.domain.usecases.report_statistics import ReportStatisticsUseCase
 from app.modules.reports.rendering import render_acceptance_report
 from app.modules.reports.storage import ObjectStorage, get_object_storage
 from app.modules.workspaces.presentation.deps import get_article_repo
@@ -77,3 +78,7 @@ def get_uc_delete_report() -> DeleteReportUseCase:
 
 def get_uc_download_report() -> DownloadReportUseCase:
     return DownloadReportUseCase(report_repo=get_report_repo(), storage=_storage())
+
+
+def get_uc_report_statistics() -> ReportStatisticsUseCase:
+    return ReportStatisticsUseCase(report_repo=get_report_repo())

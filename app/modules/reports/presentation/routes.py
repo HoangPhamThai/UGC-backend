@@ -17,11 +17,13 @@ from app.modules.reports.presentation.deps import (
     get_uc_list_eligible,
     get_uc_list_my_reports,
     get_uc_list_reports,
+    get_uc_report_statistics,
 )
 from app.modules.reports.presentation.schema import (
     EligibleGroupResponse,
     GenerateReportsRequest,
     ReportResponse,
+    ReportStatisticsResponse,
 )
 from app.modules.users.data.model import User
 
@@ -81,6 +83,19 @@ async def list_reports(
         period=period, status=status_, creator_user_id=creator_user_id
     )
     return create_success_response([ReportResponse.from_model(r) for r in reports])
+
+
+@router.get(
+    "/reports/statistics",
+    response_model=StandardResponse[ReportStatisticsResponse],
+)
+async def report_statistics(
+    period: Optional[str] = Query(default=None, pattern=r"^\d{4}-\d{2}$"),
+    current_user: User = Depends(require_permissions(Permission.REPORTS_READ)),
+    uc=Depends(get_uc_report_statistics),
+):
+    stats = await uc.execute(period=period)
+    return create_success_response(ReportStatisticsResponse.from_stats(stats))
 
 
 @router.get("/reports/{report_id}", response_model=StandardResponse[ReportResponse])
