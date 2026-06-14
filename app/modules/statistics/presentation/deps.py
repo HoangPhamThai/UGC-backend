@@ -11,6 +11,9 @@ from app.modules.statistics.domain.usecases.list_creators import ListCreatorsUse
 from app.modules.statistics.domain.usecases.list_creator_articles import (
     ListCreatorArticlesUseCase,
 )
+from app.modules.statistics.domain.usecases.list_all_articles import (
+    ListAllArticlesUseCase,
+)
 
 
 def get_statistics_repo() -> StatisticsRepo:
@@ -39,3 +42,9 @@ def get_uc_list_creator_articles(
     repo: StatisticsRepo = Depends(get_statistics_repo),
 ) -> ListCreatorArticlesUseCase:
     return ListCreatorArticlesUseCase(repo=repo)
+
+
+def get_uc_list_all_articles(
+    repo: StatisticsRepo = Depends(get_statistics_repo),
+) -> ListAllArticlesUseCase:
+    return ListAllArticlesUseCase(repo=repo)

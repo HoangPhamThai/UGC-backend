@@ -12,6 +12,7 @@ from app.modules.statistics.domain.usecases.list_creators import CreatorListEntr
 from app.modules.statistics.domain.usecases.list_creator_articles import (
     CreatorArticleEntry,
 )
+from app.modules.statistics.domain.usecases.list_all_articles import ArticleRowEntry
 
 
 class SummaryResponse(BaseModel):
@@ -103,4 +104,35 @@ class CreatorArticleItemResponse(BaseModel):
 
 class CreatorArticlesResponse(BaseModel):
     items: list[CreatorArticleItemResponse]
+    total: int
+
+
+class ArticleRowResponse(BaseModel):
+    id: str
+    name: str
+    product: Product
+    status: ArticleStatus
+    on_air_date: date
+    created_at: int  # epoch ms
+    creator_email: Optional[str] = None
+    claimed_by_email: Optional[str] = None
+    reviewer_email: Optional[str] = None
+
+    @classmethod
+    def from_entry(cls, e: ArticleRowEntry) -> "ArticleRowResponse":
+        return cls(
+            id=e.id,
+            name=e.name,
+            product=e.product,
+            status=e.status,
+            on_air_date=e.on_air_date,
+            created_at=to_epoch_ms(e.created_at),
+            creator_email=e.creator_email,
+            claimed_by_email=e.claimed_by_email,
+            reviewer_email=e.reviewer_email,
+        )
+
+
+class ArticleListResponse(BaseModel):
+    items: list[ArticleRowResponse]
     total: int

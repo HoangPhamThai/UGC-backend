@@ -12,10 +12,13 @@ from app.modules.workspaces.data.model import Product
 from app.modules.statistics.presentation.deps import (
     get_uc_get_qc_breakdown,
     get_uc_get_summary,
+    get_uc_list_all_articles,
     get_uc_list_creator_articles,
     get_uc_list_creators,
 )
 from app.modules.statistics.presentation.schema import (
+    ArticleListResponse,
+    ArticleRowResponse,
     CreatorArticleItemResponse,
     CreatorArticlesResponse,
     CreatorListItemResponse,
@@ -63,6 +66,27 @@ async def get_qc_breakdown(
     result = await uc.execute(from_dt=from_dt, to_dt=to_dt, product=product)
     data = QcBreakdownResponse(
         items=[QcBreakdownRowResponse.from_row(r) for r in result.items]
+    )
+    return create_success_response(data)
+
+
+@router.get("/articles", response_model=StandardResponse[ArticleListResponse])
+async def list_articles(
+    from_: Optional[date] = Query(default=None, alias="from"),
+    to: Optional[date] = Query(default=None),
+    product: Optional[Product] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(require_permissions(Permission.STATS_READ)),
+    uc=Depends(get_uc_list_all_articles),
+):
+    from_dt, to_dt = _window(from_, to)
+    result = await uc.execute(
+        from_dt=from_dt, to_dt=to_dt, product=product, page=page, limit=limit
+    )
+    data = ArticleListResponse(
+        items=[ArticleRowResponse.from_entry(e) for e in result.items],
+        total=result.total,
     )
     return create_success_response(data)
 
