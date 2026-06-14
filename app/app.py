@@ -84,6 +84,11 @@ async def lifespan(app: FastAPI):
                 role=UserRole.SUPERUSER,
             ),
             DefaultAccount(
+                email=settings.admin_email,
+                password=settings.admin_password,
+                role=UserRole.ADMIN,
+            ),
+            DefaultAccount(
                 email=settings.creator_email,
                 password=settings.creator_password,
                 role=UserRole.CREATOR,

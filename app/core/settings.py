@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     superuser_email: Optional[str] = Field(default=None, alias="SUPERUSER_EMAIL")
     superuser_password: Optional[str] = Field(default=None, alias="SUPERUSER_PASSWORD")
 
+    admin_email: Optional[str] = Field(default=None, alias="ADMIN_EMAIL")
+    admin_password: Optional[str] = Field(default=None, alias="ADMIN_PASSWORD")
+
     creator_email: Optional[str] = Field(default=None, alias="CREATOR_EMAIL")
     creator_password: Optional[str] = Field(default=None, alias="CREATOR_PASSWORD")
 
