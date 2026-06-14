@@ -74,7 +74,7 @@ async def list_reports(
     period: Optional[str] = Query(default=None),
     status_: Optional[ReportStatus] = Query(default=None, alias="status"),
     creator_user_id: Optional[str] = Query(default=None),
-    current_user: User = Depends(require_permissions(Permission.REPORTS_MANAGE)),
+    current_user: User = Depends(require_permissions(Permission.REPORTS_READ)),
     uc=Depends(get_uc_list_reports),
 ):
     reports = await uc.execute(
@@ -86,7 +86,7 @@ async def list_reports(
 @router.get("/reports/{report_id}", response_model=StandardResponse[ReportResponse])
 async def get_report(
     report_id: str = Path(...),
-    current_user: User = Depends(require_permissions(Permission.REPORTS_MANAGE)),
+    current_user: User = Depends(require_permissions(Permission.REPORTS_READ)),
     uc=Depends(get_uc_get_report),
 ):
     report = await uc.execute(report_id=report_id)

@@ -31,6 +31,7 @@ class Permission(str, Enum):
     STATS_READ = "stats:read"
     # --- Acceptance reports (admin-managed) ---
     REPORTS_MANAGE = "reports:manage"
+    REPORTS_READ = "reports:read"
 
 
 ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
@@ -44,6 +45,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
             Permission.WORKSPACES_READ_ANY,
             Permission.STATS_READ,
             Permission.REPORTS_MANAGE,
+            Permission.REPORTS_READ,
         }
     ),
     UserRole.QC: frozenset(
@@ -69,7 +71,9 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
 # Permissions an interim key (agent acting for an admin) may exercise. Read/stat
 # only — never mutations. The chat/memory endpoints don't go through
 # require_permissions, so they are reachable independently of this set.
-INTERIM_ALLOWED_PERMISSIONS: frozenset[Permission] = frozenset({Permission.STATS_READ})
+INTERIM_ALLOWED_PERMISSIONS: frozenset[Permission] = frozenset(
+    {Permission.STATS_READ, Permission.REPORTS_READ}
+)
 
 
 def interim_key_allows(needed) -> bool:
