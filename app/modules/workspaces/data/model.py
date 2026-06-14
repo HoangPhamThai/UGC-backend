@@ -37,6 +37,14 @@ class ArticleStatus(str, Enum):
     REJECTED = "rejected"
 
 
+class ExtractionStatus(str, Enum):
+    """Metrics-extraction lifecycle for an article's link (spec §6).
+    None (field unset) means no link has ever been submitted."""
+    PENDING = "pending"
+    EXTRACTED = "extracted"
+    FAILED = "failed"
+
+
 # Shared status groupings (single source of truth for the use cases).
 # Creator may edit content + attributes only in these states (article.md §4.3).
 EDITABLE_STATUSES: frozenset[ArticleStatus] = frozenset(
@@ -100,6 +108,26 @@ class Workspace(BaseMongoModel):
         collection_name = "workspaces"
 
 
+class PostMetrics(BaseModel):
+    """Engagement metrics extracted from a post link. Mirrors the unified
+    schema returned by post_analyzer.PostAnalyzer (spec §3.2). All fields
+    nullable — a platform that lacks a field returns None/[]."""
+    platform: Optional[str] = None
+    url: Optional[str] = None
+    account_name: Optional[str] = None
+    nickname: Optional[str] = None
+    created_at: Optional[str] = None
+    content: Optional[str] = None
+    views: Optional[int] = None
+    favorites: Optional[int] = None
+    comments: Optional[int] = None
+    shares: Optional[int] = None
+    reposts: Optional[int] = None
+    bookmark: Optional[int] = None
+    images: list[str] = Field(default_factory=list)
+    comments_preview: list = Field(default_factory=list)
+
+
 class Article(BaseMongoModel):
     id: str = Field(default_factory=lambda: make_prefixed_id("art"), alias="_id")
     workspace_id: str = Field(..., description="Parent workspace id")
@@ -151,6 +179,13 @@ class Article(BaseMongoModel):
         description="Set when a draft acceptance report references this article; "
         "non-null => the article (and its link) are frozen.",
     )
+
+    # --- Metrics extraction (Phase 2; acceptance-reports spec §6) ---
+    extraction_status: Optional[ExtractionStatus] = Field(default=None)
+    extraction_attempts: int = Field(default=0)
+    extraction_error: Optional[str] = Field(default=None)
+    extracted_at: Optional[datetime] = Field(default=None)
+    metrics: Optional[PostMetrics] = Field(default=None)
 
     class Config:
         collection_name = "articles"
