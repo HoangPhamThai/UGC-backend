@@ -102,6 +102,14 @@ class ArticleRepo(ABC):
         ...
 
     @abstractmethod
+    async def set_link(
+        self, article_id: str, *, link: str, link_edit_count: int
+    ) -> Optional[Article]:
+        """Set link + link_submitted_at(now) + link_edit_count; bumps updated_at.
+        Returns the updated Article, or None if not found."""
+        ...
+
+    @abstractmethod
     async def update_status(
         self,
         article_id: str,

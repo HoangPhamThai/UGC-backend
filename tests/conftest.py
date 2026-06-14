@@ -118,6 +118,15 @@ class FakeArticleRepo(ArticleRepo):
             a.content = content
         return a
 
+    async def set_link(self, article_id, *, link, link_edit_count):
+        a = self.items.get(article_id)
+        if a is None:
+            return None
+        a.link = link
+        a.link_submitted_at = _now()
+        a.link_edit_count = link_edit_count
+        return a
+
     async def update_status(
         self,
         article_id,

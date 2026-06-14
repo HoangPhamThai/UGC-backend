@@ -276,6 +276,26 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
         return Article.model_validate(doc) if doc else None
 
     @override
+    async def set_link(
+        self, article_id: str, *, link: str, link_edit_count: int
+    ) -> Optional[Article]:
+        coll = await self._get_collection()
+        now = datetime.now(timezone.utc)
+        doc = await coll.find_one_and_update(
+            {"_id": article_id},
+            {
+                "$set": {
+                    "link": link,
+                    "link_submitted_at": now,
+                    "link_edit_count": link_edit_count,
+                    "updated_at": now,
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return Article.model_validate(doc) if doc else None
+
+    @override
     async def update_status(
         self,
         article_id: str,
