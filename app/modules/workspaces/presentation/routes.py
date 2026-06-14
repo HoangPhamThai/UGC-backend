@@ -18,6 +18,7 @@ from app.modules.workspaces.presentation.deps import (
     get_uc_delete_article,
     get_uc_delete_feedback,
     get_uc_delete_workspace,
+    get_uc_get_article,
     get_uc_get_workspace,
     get_uc_list_feedbacks,
     get_uc_list_workspaces,
@@ -113,6 +114,22 @@ async def get_workspace(
             products=result.products,
         )
     )
+
+
+@router.get(
+    "/{workspace_id}/articles/{article_id}",
+    response_model=StandardResponse[ArticleResponse],
+)
+async def get_article(
+    workspace_id: str = Path(...),
+    article_id: str = Path(...),
+    current_user: User = Depends(get_current_user),
+    uc=Depends(get_uc_get_article),
+):
+    article = await uc.execute(
+        workspace_id=workspace_id, article_id=article_id, caller=current_user
+    )
+    return create_success_response(ArticleResponse.from_model(article))
 
 
 @router.delete(
