@@ -88,6 +88,8 @@ class CreatorArticleItemResponse(BaseModel):
     created_at: int  # epoch ms
     claimed_by: Optional[str] = None
     reviewer_user_id: Optional[str] = None
+    claimed_by_email: Optional[str] = None
+    reviewer_email: Optional[str] = None
 
     @classmethod
     def from_entry(cls, e: CreatorArticleEntry) -> "CreatorArticleItemResponse":
@@ -100,6 +102,8 @@ class CreatorArticleItemResponse(BaseModel):
             created_at=to_epoch_ms(e.created_at),
             claimed_by=e.claimed_by,
             reviewer_user_id=e.reviewer_user_id,
+            claimed_by_email=e.claimed_by_email,
+            reviewer_email=e.reviewer_email,
         )
 
 

@@ -19,6 +19,8 @@ class CreatorArticleEntry:
     created_at: datetime
     claimed_by: Optional[str]
     reviewer_user_id: Optional[str]
+    claimed_by_email: Optional[str]
+    reviewer_email: Optional[str]
 
 
 @dataclass(frozen=True)
@@ -57,6 +59,15 @@ class ListCreatorArticlesUseCase(LoggerMixin):
         total = len(stats)
         skip = (page - 1) * limit
         page_items = stats[skip : skip + limit]
+
+        ids: set[str] = set()
+        for a in page_items:
+            if a.claimed_by:
+                ids.add(a.claimed_by)
+            if a.reviewer_user_id:
+                ids.add(a.reviewer_user_id)
+        emails = await self.repo.email_map(ids)
+
         items = [
             CreatorArticleEntry(
                 id=a.id,
@@ -67,6 +78,8 @@ class ListCreatorArticlesUseCase(LoggerMixin):
                 created_at=a.created_at,
                 claimed_by=a.claimed_by,
                 reviewer_user_id=a.reviewer_user_id,
+                claimed_by_email=emails.get(a.claimed_by) if a.claimed_by else None,
+                reviewer_email=emails.get(a.reviewer_user_id) if a.reviewer_user_id else None,
             )
             for a in page_items
         ]

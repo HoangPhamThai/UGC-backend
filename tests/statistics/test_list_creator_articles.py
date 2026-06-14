@@ -27,6 +27,31 @@ def _repo():
     return FakeStatisticsRepo(stats=stats, creators=creators)
 
 
+def _repo_with_emails():
+    creators = [CreatorRef(id="c_a", email="ann@x.com")]
+    stats = [
+        make_article_stat(
+            aid="claimed",
+            owner_user_id="c_a",
+            created_at=_dt(2),
+            status=ArticleStatus.SUBMITTED,
+            claimed_by="u_qc",
+            reviewer_user_id="u_qc",
+        ),
+        make_article_stat(
+            aid="bare",
+            owner_user_id="c_a",
+            created_at=_dt(1),
+            status=ArticleStatus.NOT_SUBMITTED,
+        ),
+    ]
+    return FakeStatisticsRepo(
+        stats=stats,
+        creators=creators,
+        emails={"u_qc": "qc@x.com", "c_a": "ann@x.com"},
+    )
+
+
 async def test_lists_creator_articles_newest_first_including_drafts():
     uc = ListCreatorArticlesUseCase(repo=_repo())
     res = await uc.execute(
@@ -55,3 +80,19 @@ async def test_unknown_creator_raises():
         await uc.execute(
             creator_id="nope", from_dt=None, to_dt=None, product=None, page=1, limit=10
         )
+
+
+async def test_email_fields_resolved():
+    uc = ListCreatorArticlesUseCase(repo=_repo_with_emails())
+    res = await uc.execute(
+        creator_id="c_a", from_dt=None, to_dt=None, product=None, page=1, limit=10
+    )
+    assert [a.id for a in res.items] == ["claimed", "bare"]
+
+    claimed = res.items[0]
+    assert claimed.claimed_by_email == "qc@x.com"
+    assert claimed.reviewer_email == "qc@x.com"
+
+    bare = res.items[1]
+    assert bare.claimed_by_email is None
+    assert bare.reviewer_email is None
