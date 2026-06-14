@@ -4,6 +4,7 @@ from fastapi import APIRouter, Body, Depends, Path, Query, status
 from app.core.auth import get_current_user
 from app.core.model import StandardResponse, create_success_response
 from app.core.permissions import Permission, require_permissions
+from app.modules.profiles.presentation.gate import require_profile_complete
 from app.modules.users.data.model import User
 from app.modules.workspaces.data.model import FeedbackAnchor
 from app.modules.workspaces.presentation.deps import (
@@ -77,6 +78,7 @@ async def list_workspaces(
     response_model=StandardResponse[WorkspaceResponse],
     status_code=status.HTTP_201_CREATED,
     response_model_exclude_none=True,
+    dependencies=[Depends(require_profile_complete)],
 )
 async def create_workspace(
     body: CreateWorkspaceRequest = Body(...),
@@ -112,6 +114,7 @@ async def get_workspace(
 @router.delete(
     "/{workspace_id}",
     response_model=StandardResponse,
+    dependencies=[Depends(require_profile_complete)],
 )
 async def delete_workspace(
     workspace_id: str = Path(...),
@@ -129,6 +132,7 @@ async def delete_workspace(
     "/{workspace_id}/articles",
     response_model=StandardResponse[ArticleResponse],
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_profile_complete)],
 )
 async def create_article(
     workspace_id: str = Path(...),
@@ -151,6 +155,7 @@ async def create_article(
 @router.delete(
     "/{workspace_id}/articles/{article_id}",
     response_model=StandardResponse,
+    dependencies=[Depends(require_profile_complete)],
 )
 async def delete_article(
     workspace_id: str = Path(...),
@@ -167,6 +172,7 @@ async def delete_article(
 @router.patch(
     "/{workspace_id}/articles/{article_id}",
     response_model=StandardResponse[ArticleResponse],
+    dependencies=[Depends(require_profile_complete)],
 )
 async def update_article(
     workspace_id: str = Path(...),
@@ -190,6 +196,7 @@ async def update_article(
 @router.post(
     "/{workspace_id}/articles/{article_id}/submit",
     response_model=StandardResponse[ArticleResponse],
+    dependencies=[Depends(require_profile_complete)],
 )
 async def submit_article(
     workspace_id: str = Path(...),
@@ -258,6 +265,7 @@ async def claim_article(
 @router.post(
     "/{workspace_id}/articles/{article_id}/withdraw",
     response_model=StandardResponse[ArticleResponse],
+    dependencies=[Depends(require_profile_complete)],
 )
 async def withdraw_article(
     workspace_id: str = Path(...),
