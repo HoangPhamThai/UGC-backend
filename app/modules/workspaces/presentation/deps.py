@@ -43,6 +43,9 @@ from app.modules.workspaces.domain.usecases.set_feedback_status import (
     SetFeedbackStatusUseCase,
 )
 from app.modules.workspaces.domain.usecases.submit_article import SubmitArticleUseCase
+from app.modules.workspaces.domain.usecases.retry_extraction import (
+    RetryExtractionUseCase,
+)
 from app.modules.workspaces.domain.usecases.submit_article_link import (
     SubmitArticleLinkUseCase,
 )
@@ -134,6 +137,13 @@ def get_uc_update_article() -> UpdateArticleUseCase:
 
 def get_uc_submit_article_link() -> SubmitArticleLinkUseCase:
     return SubmitArticleLinkUseCase(
+        workspace_repo=get_workspace_repo(),
+        article_repo=get_article_repo(),
+    )
+
+
+def get_uc_retry_extraction() -> RetryExtractionUseCase:
+    return RetryExtractionUseCase(
         workspace_repo=get_workspace_repo(),
         article_repo=get_article_repo(),
     )

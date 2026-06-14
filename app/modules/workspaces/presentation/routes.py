@@ -1,12 +1,13 @@
 # app/modules/workspaces/presentation/routes.py
-from fastapi import APIRouter, Body, Depends, Path, Query, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Path, Query, status
 
 from app.core.auth import get_current_user
 from app.core.model import StandardResponse, create_success_response
 from app.core.permissions import Permission, require_permissions
 from app.modules.profiles.presentation.gate import require_profile_complete
 from app.modules.users.data.model import User
-from app.modules.workspaces.data.model import FeedbackAnchor
+from app.modules.workspaces.data.model import ExtractionStatus, FeedbackAnchor
+from app.modules.workspaces.extraction.deps import run_extraction_task
 from app.modules.workspaces.presentation.deps import (
     get_uc_add_reply,
     get_uc_approve_article,
@@ -22,6 +23,7 @@ from app.modules.workspaces.presentation.deps import (
     get_uc_list_workspaces,
     get_uc_publish_review,
     get_uc_reject_article,
+    get_uc_retry_extraction,
     get_uc_set_feedback_status,
     get_uc_submit_article,
     get_uc_submit_article_link,
@@ -201,6 +203,7 @@ async def update_article(
     dependencies=[Depends(require_profile_complete)],
 )
 async def submit_article_link(
+    background_tasks: BackgroundTasks,
     workspace_id: str = Path(...),
     article_id: str = Path(...),
     body: SubmitArticleLinkRequest = Body(...),
@@ -213,7 +216,31 @@ async def submit_article_link(
         caller=current_user,
         link=body.link,
     )
+    if article.extraction_status == ExtractionStatus.PENDING and article.link:
+        background_tasks.add_task(run_extraction_task, article.id, article.link)
     return create_success_response(ArticleResponse.from_model(article), "Link saved")
+
+
+@router.post(
+    "/{workspace_id}/articles/{article_id}/link/extract",
+    response_model=StandardResponse[ArticleResponse],
+    dependencies=[Depends(require_profile_complete)],
+)
+async def retry_article_extraction(
+    background_tasks: BackgroundTasks,
+    workspace_id: str = Path(...),
+    article_id: str = Path(...),
+    current_user: User = Depends(require_permissions(Permission.ARTICLES_UPDATE)),
+    uc=Depends(get_uc_retry_extraction),
+):
+    article = await uc.execute(
+        workspace_id=workspace_id, article_id=article_id, caller=current_user
+    )
+    if article.link:
+        background_tasks.add_task(run_extraction_task, article.id, article.link)
+    return create_success_response(
+        ArticleResponse.from_model(article), "Re-extracting metrics"
+    )
 
 
 @router.post(
