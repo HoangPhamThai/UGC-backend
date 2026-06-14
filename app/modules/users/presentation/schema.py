@@ -15,4 +15,5 @@ class UserMeResponse(BaseModel):
     role: UserRole
     qc_products: list[Product] = Field(default_factory=list)
     permissions: list[Permission]
+    profile_complete: bool = True
     created_at: datetime
