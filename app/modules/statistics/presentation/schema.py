@@ -5,7 +5,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 
 from app.core.model import to_epoch_ms
-from app.modules.workspaces.data.model import ArticleStatus, Product
+from app.modules.workspaces.data.model import ArticleStatus, PostMetrics, Product
 from app.modules.statistics.domain.usecases.get_summary import SummaryCounts
 from app.modules.statistics.domain.usecases.get_qc_breakdown import QcBreakdownRow
 from app.modules.statistics.domain.usecases.list_creators import CreatorListEntry
@@ -112,6 +112,26 @@ class CreatorArticlesResponse(BaseModel):
     total: int
 
 
+class MetricsBrief(BaseModel):
+    """Curated engagement metrics for the analytics agent. Excludes heavy fields
+    (images, comments_preview, content) and low-value ones. All optional — null
+    means the article's link has not been scraped yet."""
+    platform: Optional[str] = None
+    views: Optional[int] = None
+    favorites: Optional[int] = None
+    comments: Optional[int] = None
+    shares: Optional[int] = None
+
+    @classmethod
+    def from_metrics(cls, m: Optional[PostMetrics]) -> Optional["MetricsBrief"]:
+        if m is None:
+            return None
+        return cls(
+            platform=m.platform, views=m.views, favorites=m.favorites,
+            comments=m.comments, shares=m.shares,
+        )
+
+
 class ArticleRowResponse(BaseModel):
     id: str
     name: str
@@ -122,6 +142,8 @@ class ArticleRowResponse(BaseModel):
     creator_email: Optional[str] = None
     claimed_by_email: Optional[str] = None
     reviewer_email: Optional[str] = None
+    link: Optional[str] = None
+    metrics: Optional[MetricsBrief] = None
 
     @classmethod
     def from_entry(cls, e: ArticleRowEntry) -> "ArticleRowResponse":
@@ -135,6 +157,8 @@ class ArticleRowResponse(BaseModel):
             creator_email=e.creator_email,
             claimed_by_email=e.claimed_by_email,
             reviewer_email=e.reviewer_email,
+            link=e.link,
+            metrics=MetricsBrief.from_metrics(e.metrics),
         )
 
 

@@ -1,6 +1,6 @@
 # app/modules/statistics/presentation/routes.py
 from datetime import date
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -80,12 +80,15 @@ async def list_articles(
     product: Optional[Product] = Query(default=None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
+    sort: Literal["created_at", "views", "on_air_date"] = Query(default="created_at"),
+    order: Literal["asc", "desc"] = Query(default="desc"),
     current_user: User = Depends(require_permissions(Permission.STATS_READ)),
     uc=Depends(get_uc_list_all_articles),
 ):
     from_dt, to_dt = _window(from_, to)
     result = await uc.execute(
-        from_dt=from_dt, to_dt=to_dt, product=product, page=page, limit=limit
+        from_dt=from_dt, to_dt=to_dt, product=product, page=page, limit=limit,
+        sort_by=sort, order=order,
     )
     data = ArticleListResponse(
         items=[ArticleRowResponse.from_entry(e) for e in result.items],
