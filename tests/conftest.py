@@ -13,6 +13,7 @@ from app.modules.workspaces.data.model import (
     Feedback,
     FeedbackReply,
     FeedbackStatus,
+    PostMetrics,
     Product,
     Workspace,
 )
@@ -480,6 +481,8 @@ def make_article_stat(
     rejected_by=None,
     created_at=None,
     on_air_date=None,
+    link=None,
+    metrics=None,
 ) -> ArticleStat:
     return ArticleStat(
         id=aid,
@@ -492,6 +495,8 @@ def make_article_stat(
         claimed_by=claimed_by,
         reviewer_user_id=reviewer_user_id,
         rejected_by=rejected_by,
+        link=link,
+        metrics=metrics,
     )
 
 

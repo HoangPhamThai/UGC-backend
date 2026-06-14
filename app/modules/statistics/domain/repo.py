@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Optional
 
-from app.modules.workspaces.data.model import ArticleStatus, Product
+from app.modules.workspaces.data.model import ArticleStatus, PostMetrics, Product
 
 
 @dataclass(frozen=True)
@@ -22,6 +22,8 @@ class ArticleStat:
     claimed_by: Optional[str]
     reviewer_user_id: Optional[str]
     rejected_by: Optional[str]
+    link: Optional[str] = None
+    metrics: Optional[PostMetrics] = None
 
 
 @dataclass(frozen=True)

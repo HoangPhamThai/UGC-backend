@@ -106,6 +106,8 @@ class StatisticsDataRepository(LoggerMixin, StatisticsRepo):
                     claimed_by=article.claimed_by,
                     reviewer_user_id=article.reviewer_user_id,
                     rejected_by=article.rejected_by,
+                    link=article.link,
+                    metrics=article.metrics,
                 )
             )
         return out
