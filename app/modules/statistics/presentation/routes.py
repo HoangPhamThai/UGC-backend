@@ -15,6 +15,7 @@ from app.modules.statistics.presentation.deps import (
     get_uc_list_all_articles,
     get_uc_list_creator_articles,
     get_uc_list_creators,
+    get_uc_list_qc_articles,
 )
 from app.modules.statistics.presentation.schema import (
     ArticleListResponse,
@@ -23,6 +24,8 @@ from app.modules.statistics.presentation.schema import (
     CreatorArticlesResponse,
     CreatorListItemResponse,
     CreatorListResponse,
+    QcArticleRowResponse,
+    QcArticlesResponse,
     QcBreakdownResponse,
     QcBreakdownRowResponse,
     SummaryResponse,
@@ -138,6 +141,31 @@ async def list_creator_articles(
     )
     data = CreatorArticlesResponse(
         items=[CreatorArticleItemResponse.from_entry(e) for e in result.items],
+        total=result.total,
+    )
+    return create_success_response(data)
+
+
+@router.get(
+    "/qcs/{qc_id}/articles",
+    response_model=StandardResponse[QcArticlesResponse],
+)
+async def list_qc_articles(
+    qc_id: str,
+    from_: Optional[date] = Query(default=None, alias="from"),
+    to: Optional[date] = Query(default=None),
+    product: Optional[Product] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(require_permissions(Permission.STATS_READ)),
+    uc=Depends(get_uc_list_qc_articles),
+):
+    from_dt, to_dt = _window(from_, to)
+    result = await uc.execute(
+        qc_id=qc_id, from_dt=from_dt, to_dt=to_dt, product=product, page=page, limit=limit
+    )
+    data = QcArticlesResponse(
+        items=[QcArticleRowResponse.from_entry(e) for e in result.items],
         total=result.total,
     )
     return create_success_response(data)
