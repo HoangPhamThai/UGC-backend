@@ -15,6 +15,8 @@ def _repo():
         make_article_stat(aid="approved", status=ArticleStatus.APPROVED, owner_user_id="u_c1", claimed_by="u_qc", reviewer_user_id="u_qc"),
         make_article_stat(aid="rejected", status=ArticleStatus.REJECTED, owner_user_id="u_c2", claimed_by="u_qc", rejected_by="u_qc"),
         make_article_stat(aid="auto", status=ArticleStatus.APPROVED, owner_user_id="u_c2", claimed_by="u_qc"),
+        # creator re-submitted after feedback; QC still claimed -> in_review
+        make_article_stat(aid="edited", status=ArticleStatus.EDITED, owner_user_id="u_c1", claimed_by="u_qc"),
         make_article_stat(aid="other_qc", status=ArticleStatus.APPROVED, owner_user_id="u_c1", claimed_by="u_other"),
     ]
     qcs = [QcRef(id="u_qc", email="qc@x.com", products=[Product.CL])]
@@ -31,13 +33,14 @@ async def test_unknown_qc_raises():
 async def test_only_claimed_by_qc_with_outcomes():
     uc = ListQcArticlesUseCase(repo=_repo())
     res = await uc.execute(qc_id="u_qc", from_dt=None, to_dt=None, product=None, page=1, limit=20)
-    assert res.total == 4  # other_qc excluded
+    assert res.total == 5  # other_qc excluded
     outcome = {r.id: r.outcome for r in res.items}
     assert outcome == {
         "claimed_only": "in_review",
         "approved": "approved",
         "rejected": "rejected",
         "auto": "auto_approved",
+        "edited": "in_review",
     }
     by_id = {r.id: r for r in res.items}
     assert by_id["approved"].creator_email == "c1@x.com"

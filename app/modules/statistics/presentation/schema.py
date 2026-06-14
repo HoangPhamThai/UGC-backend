@@ -1,6 +1,6 @@
 # app/modules/statistics/presentation/schema.py
 from datetime import date
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
@@ -147,7 +147,7 @@ class QcArticleRowResponse(BaseModel):
     on_air_date: date
     created_at: int  # epoch ms
     creator_email: Optional[str] = None
-    outcome: str
+    outcome: Literal["approved", "auto_approved", "rejected", "in_review"]
 
     @classmethod
     def from_entry(cls, e: QcArticleEntry) -> "QcArticleRowResponse":
