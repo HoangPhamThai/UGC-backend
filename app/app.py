@@ -39,6 +39,8 @@ from app.modules.interim_keys.data.repo import InterimKeyDataRepository
 from app.modules.interim_keys.presentation.routes import router as interim_keys_router
 from app.modules.chat.data.repo import ChatSessionDataRepository
 from app.modules.chat.presentation.routes import router as chat_router
+from app.modules.profiles.data.repo import CreatorProfileDataRepository
+from app.modules.profiles.presentation.routes import router as profiles_router
 
 
 logging.basicConfig(
@@ -61,6 +63,7 @@ async def lifespan(app: FastAPI):
     await StatisticsDataRepository().ensure_indexes()
     await InterimKeyDataRepository().ensure_indexes()
     await ChatSessionDataRepository().ensure_indexes()
+    await CreatorProfileDataRepository().ensure_indexes()
 
     # Heal legacy user docs (singular `qc_product` -> `qc_products` array) BEFORE
     # bootstrap reads any account. Idempotent; a no-op once migrated.
@@ -132,6 +135,7 @@ app.include_router(notifications_router, prefix="/api/v1")
 app.include_router(statistics_router, prefix="/api/v1")
 app.include_router(interim_keys_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
+app.include_router(profiles_router, prefix="/api/v1")
 
 
 @app.get("/health")
