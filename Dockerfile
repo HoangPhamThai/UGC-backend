@@ -13,6 +13,9 @@ RUN apt-get update
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Threads scraping uses Playwright/Chromium. Install the browser + its OS deps.
+RUN python -m playwright install --with-deps chromium
+
 # Copy the rest of the application code
 COPY ./app ./app
 
