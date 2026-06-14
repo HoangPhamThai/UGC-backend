@@ -7,9 +7,15 @@ table's single data row is cloned once per line item."""
 import copy
 from io import BytesIO
 from pathlib import Path
+from typing import Optional
 
 from docx import Document
 from docx.table import Table, _Row
+
+from app.modules.reports.domain.errors import ReportValidationError
+
+# Tokens a usable template must contain; absence means generation would silently break.
+REQUIRED_TEMPLATE_TOKENS = ("{creator_name}", "{final_award}", "{article_platform}")
 
 TEMPLATE_PATH = str(Path(__file__).parent / "templates" / "acceptance_report.docx")
 
@@ -60,13 +66,17 @@ def _fill_row(row, item: dict) -> None:
             _replace_in_paragraph(paragraph, mapping)
 
 
-def render_acceptance_report(*, scalars: dict, line_items: list[dict]) -> bytes:
-    """Fill the template and return the .docx as bytes.
+def render_acceptance_report(
+    *, scalars: dict, line_items: list[dict], template_bytes: Optional[bytes] = None
+) -> bytes:
+    """Fill the template and return the .docx as bytes. When `template_bytes` is
+    given, render from those bytes (the active uploaded template); otherwise fall
+    back to the vendored TEMPLATE_PATH.
 
     `scalars` maps scalar token names (without braces) to string values, e.g.
     {"creator_name": "...", "final_award": "900000"}. `line_items` is a list of
     dicts keyed by the article_* token names for the Điều 2 rows."""
-    document = Document(TEMPLATE_PATH)
+    document = Document(BytesIO(template_bytes)) if template_bytes else Document(TEMPLATE_PATH)
     scalar_map = {k: str(v) for k, v in scalars.items()}
 
     # Replace scalar tokens in body paragraphs.
@@ -113,3 +123,22 @@ def render_acceptance_report(*, scalars: dict, line_items: list[dict]) -> bytes:
     buffer = BytesIO()
     document.save(buffer)
     return buffer.getvalue()
+
+
+def validate_template_bytes(data: bytes) -> None:
+    """Raise ReportValidationError if `data` is not a usable acceptance-report
+    template (not a valid .docx, or missing required tokens)."""
+    try:
+        document = Document(BytesIO(data))
+    except Exception as exc:  # noqa: BLE001 — any open failure means invalid upload
+        raise ReportValidationError("File không phải .docx hợp lệ") from exc
+
+    parts = [p.text for p in document.paragraphs]
+    for table in document.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                parts.append(cell.text)
+    text = "\n".join(parts)
+    missing = [t for t in REQUIRED_TEMPLATE_TOKENS if t not in text]
+    if missing:
+        raise ReportValidationError(f"Template thiếu token bắt buộc: {', '.join(missing)}")

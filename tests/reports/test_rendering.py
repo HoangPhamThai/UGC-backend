@@ -5,7 +5,8 @@ import pytest
 
 docx = pytest.importorskip("docx")  # skip if python-docx not installed locally
 
-from app.modules.reports.rendering import TEMPLATE_PATH, render_acceptance_report
+from app.modules.reports.rendering import TEMPLATE_PATH, render_acceptance_report, validate_template_bytes
+from app.modules.reports.domain.errors import ReportValidationError
 
 
 def _all_text(document) -> str:
@@ -71,3 +72,21 @@ def test_render_handles_single_item():
     text = _all_text(document)
     assert "https://tt/1" in text and "https://th/2" not in text
     assert "{article_platform}" not in text
+
+
+def test_validate_template_accepts_the_vendored_default():
+    data = Path(TEMPLATE_PATH).read_bytes()
+    validate_template_bytes(data)  # must not raise
+
+
+def test_validate_template_rejects_non_docx():
+    with pytest.raises(ReportValidationError):
+        validate_template_bytes(b"not a docx")
+
+
+def test_render_uses_provided_template_bytes():
+    data = Path(TEMPLATE_PATH).read_bytes()
+    out = render_acceptance_report(scalars=_scalars(), line_items=_items(), template_bytes=data)
+    document = docx.Document(BytesIO(out))
+    text = _all_text(document)
+    assert "Nguyen Van A" in text and "{" not in text
