@@ -51,6 +51,10 @@ AWAITING_QC_STATUSES: frozenset[ArticleStatus] = frozenset(
     {ArticleStatus.SUBMITTED, ArticleStatus.EDITED}
 )
 
+# Max number of times a creator may CHANGE a submitted link (the first submit
+# does not count). See acceptance-reports spec §5.1.
+MAX_LINK_EDITS = 5
+
 
 class FeedbackStatus(str, Enum):
     """Feedback lifecycle. See qc-review.md §6."""
@@ -132,6 +136,21 @@ class Article(BaseMongoModel):
     )
     last_activity_by: Optional[str] = Field(default=None)
     last_activity_at: Optional[datetime] = Field(default=None)
+
+    # --- Link attachment (Phase 1; acceptance-reports spec §5) ---
+    link: Optional[str] = Field(
+        default=None, description="Public URL of the published post"
+    )
+    link_submitted_at: Optional[datetime] = Field(default=None)
+    link_edit_count: int = Field(
+        default=0, description="# of times the link changed after first submit; cap MAX_LINK_EDITS"
+    )
+    # --- Report lock (Phase 3 writes this; Phase 1 only reads it) ---
+    report_id: Optional[str] = Field(
+        default=None,
+        description="Set when a draft acceptance report references this article; "
+        "non-null => the article (and its link) are frozen.",
+    )
 
     class Config:
         collection_name = "articles"
