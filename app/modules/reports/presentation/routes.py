@@ -81,10 +81,12 @@ async def list_reports(
     current_user: User = Depends(require_permissions(Permission.REPORTS_READ)),
     uc=Depends(get_uc_list_reports),
 ):
-    reports = await uc.execute(
+    rows = await uc.execute(
         period=period, status=status_, creator_user_id=creator_user_id
     )
-    return create_success_response([ReportResponse.from_model(r) for r in reports])
+    return create_success_response(
+        [ReportResponse.from_model(rw.report, rw.email) for rw in rows]
+    )
 
 
 @router.get(

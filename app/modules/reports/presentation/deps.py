@@ -59,7 +59,9 @@ def get_uc_generate_reports() -> GenerateReportsUseCase:
 
 
 def get_uc_list_reports() -> ListReportsUseCase:
-    return ListReportsUseCase(report_repo=get_report_repo())
+    return ListReportsUseCase(
+        report_repo=get_report_repo(), source_repo=get_report_source_repo()
+    )
 
 
 def get_uc_list_my_reports() -> ListMyReportsUseCase:

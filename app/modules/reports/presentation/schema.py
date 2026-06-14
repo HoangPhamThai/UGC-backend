@@ -60,6 +60,7 @@ class ReportResponse(BaseModel):
     id: str
     period: str
     creator_user_id: str
+    creator_email: Optional[str] = None
     status: ReportStatus
     total_approved_articles: int
     article_award_price: int
@@ -71,9 +72,10 @@ class ReportResponse(BaseModel):
     finalized_at: Optional[int] = None
 
     @classmethod
-    def from_model(cls, r: AcceptanceReport) -> "ReportResponse":
+    def from_model(cls, r: AcceptanceReport, email: Optional[str] = None) -> "ReportResponse":
         return cls(
             id=r.id, period=r.period, creator_user_id=r.creator_user_id,
+            creator_email=email,
             status=r.status, total_approved_articles=r.total_approved_articles,
             article_award_price=r.article_award_price, total_award=r.total_award,
             tax=r.tax, final_award=r.final_award, final_award_verbal=r.final_award_verbal,
