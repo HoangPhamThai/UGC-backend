@@ -113,6 +113,14 @@ class ArticleRepo(ABC):
         ...
 
     @abstractmethod
+    async def set_report_id(
+        self, article_id: str, report_id: Optional[str]
+    ) -> Optional[Article]:
+        """Set (lock) or clear (unlock) the article's report_id; bumps updated_at.
+        Returns the updated Article, or None if not found."""
+        ...
+
+    @abstractmethod
     async def record_extraction_success(
         self, article_id: str, *, url: str, metrics: "PostMetrics"
     ) -> Optional[Article]:

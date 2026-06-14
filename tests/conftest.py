@@ -133,6 +133,13 @@ class FakeArticleRepo(ArticleRepo):
         a.metrics = None
         return a
 
+    async def set_report_id(self, article_id, report_id):
+        a = self.items.get(article_id)
+        if a is None:
+            return None
+        a.report_id = report_id
+        return a
+
     async def record_extraction_success(self, article_id, *, url, metrics):
         a = self.items.get(article_id)
         if a is None or a.link != url:
