@@ -4,6 +4,8 @@ def test_report_routes_registered():
     assert "/reports/eligible" in paths
     assert "/reports/generate" in paths
     assert "/reports" in paths
+    assert "/reports/template" in paths
+    assert "/reports/template/download" in paths
     assert "/reports/{report_id}" in paths
     assert "/reports/{report_id}/finalize" in paths
     assert "/reports/{report_id}/download" in paths

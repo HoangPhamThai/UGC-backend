@@ -24,6 +24,11 @@ from app.modules.reports.storage import ObjectStorage, get_object_storage
 from app.modules.reports.domain.usecases.recheck_link_metrics import (
     RecheckLinkMetricsUseCase,
 )
+from app.modules.reports.domain.usecases.template import (
+    DownloadTemplateUseCase,
+    GetTemplateUseCase,
+    UploadTemplateUseCase,
+)
 from app.modules.workspaces.extraction.deps import get_extractor
 from app.modules.workspaces.presentation.deps import get_article_repo
 
@@ -101,3 +106,15 @@ def get_uc_recheck_link_metrics() -> RecheckLinkMetricsUseCase:
     return RecheckLinkMetricsUseCase(
         article_repo=get_article_repo(), extractor=get_extractor()
     )
+
+
+def get_uc_get_template() -> GetTemplateUseCase:
+    return GetTemplateUseCase(template_repo=get_template_repo())
+
+
+def get_uc_upload_template() -> UploadTemplateUseCase:
+    return UploadTemplateUseCase(template_repo=get_template_repo())
+
+
+def get_uc_download_template() -> DownloadTemplateUseCase:
+    return DownloadTemplateUseCase(template_repo=get_template_repo())

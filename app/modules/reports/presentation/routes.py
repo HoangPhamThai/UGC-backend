@@ -1,7 +1,7 @@
 # app/modules/reports/presentation/routes.py
 from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, Path, Query, Response, status
+from fastapi import APIRouter, Body, Depends, File, Path, Query, Response, UploadFile, status
 
 from app.core.auth import get_current_user
 from app.core.model import StandardResponse, create_success_response
@@ -11,14 +11,17 @@ from app.modules.reports.helpers import DOCX_MIME
 from app.modules.reports.presentation.deps import (
     get_uc_delete_report,
     get_uc_download_report,
+    get_uc_download_template,
     get_uc_finalize_report,
     get_uc_generate_reports,
     get_uc_get_report,
+    get_uc_get_template,
     get_uc_list_eligible,
     get_uc_list_my_reports,
     get_uc_list_reports,
     get_uc_recheck_link_metrics,
     get_uc_report_statistics,
+    get_uc_upload_template,
 )
 from app.modules.reports.presentation.schema import (
     EligibleGroupResponse,
@@ -26,6 +29,7 @@ from app.modules.reports.presentation.schema import (
     RecheckResponse,
     ReportResponse,
     ReportStatisticsResponse,
+    TemplateMetaResponse,
 )
 from app.modules.users.data.model import User
 
@@ -100,6 +104,39 @@ async def report_statistics(
 ):
     stats = await uc.execute(period=period)
     return create_success_response(ReportStatisticsResponse.from_stats(stats))
+
+
+@router.get("/reports/template", response_model=StandardResponse[TemplateMetaResponse])
+async def get_template(
+    current_user: User = Depends(require_permissions(Permission.REPORTS_READ)),
+    uc=Depends(get_uc_get_template),
+):
+    view = await uc.execute()
+    return create_success_response(TemplateMetaResponse.from_view(view))
+
+
+@router.get("/reports/template/download")
+async def download_template(
+    current_user: User = Depends(require_permissions(Permission.REPORTS_READ)),
+    uc=Depends(get_uc_download_template),
+):
+    filename, data = await uc.execute()
+    return _docx_response(filename, data)
+
+
+@router.post("/reports/template", response_model=StandardResponse[TemplateMetaResponse])
+async def upload_template(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_permissions(Permission.REPORTS_MANAGE)),
+    uc=Depends(get_uc_upload_template),
+):
+    data = await file.read()
+    view = await uc.execute(
+        data=data,
+        filename=file.filename or "template.docx",
+        uploaded_by=getattr(current_user, "id", "unknown"),
+    )
+    return create_success_response(TemplateMetaResponse.from_view(view), "Template updated")
 
 
 @router.get("/reports/{report_id}", response_model=StandardResponse[ReportResponse])

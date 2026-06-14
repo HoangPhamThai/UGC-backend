@@ -10,6 +10,7 @@ from app.modules.reports.domain.repo import EligibleArticle
 from app.modules.reports.domain.usecases.list_eligible import EligibleCreatorGroup
 from app.modules.reports.domain.usecases.recheck_link_metrics import RecheckResult
 from app.modules.reports.domain.usecases.report_statistics import ReportStatistics
+from app.modules.reports.domain.usecases.template import TemplateView
 from app.modules.workspaces.data.model import PostMetrics
 
 
@@ -107,3 +108,19 @@ class RecheckResponse(BaseModel):
     @classmethod
     def from_result(cls, r: RecheckResult) -> "RecheckResponse":
         return cls(stored=r.stored, fresh=r.fresh, diff=r.diff)
+
+
+class TemplateMetaResponse(BaseModel):
+    filename: str
+    uploaded_by: Optional[str] = None
+    uploaded_at: Optional[int] = None
+    is_default: bool
+
+    @classmethod
+    def from_view(cls, v: TemplateView) -> "TemplateMetaResponse":
+        return cls(
+            filename=v.filename,
+            uploaded_by=v.uploaded_by,
+            uploaded_at=_to_epoch_ms(v.uploaded_at) if v.uploaded_at else None,
+            is_default=v.is_default,
+        )
