@@ -147,3 +147,13 @@ class StatisticsDataRepository(LoggerMixin, StatisticsRepo):
                 QcRef(id=user.id, email=user.email, products=list(user.qc_products))
             )
         return out
+
+    @override
+    async def email_map(self, ids: set[str]) -> dict[str, str]:
+        if not ids:
+            return {}
+        coll = await self._users()
+        out: dict[str, str] = {}
+        async for doc in coll.find({"_id": {"$in": list(ids)}}, {"email": 1}):
+            out[doc["_id"]] = doc["email"]
+        return out

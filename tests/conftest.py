@@ -347,11 +347,13 @@ class FakeStatisticsRepo(StatisticsRepo):
         auto_ids: Optional[set[str]] = None,
         creators: Optional[list[CreatorRef]] = None,
         qcs: Optional[list[QcRef]] = None,
+        emails: Optional[dict[str, str]] = None,
     ) -> None:
         self._stats = list(stats or [])
         self._auto = set(auto_ids or set())
         self._creators = list(creators or [])
         self._qcs = list(qcs or [])
+        self._emails = dict(emails or {})
 
     async def list_article_stats(
         self,
@@ -391,6 +393,9 @@ class FakeStatisticsRepo(StatisticsRepo):
 
     async def list_qcs(self):
         return list(self._qcs)
+
+    async def email_map(self, ids):
+        return {uid: self._emails[uid] for uid in ids if uid in self._emails}
 
 
 class FakeInterimKeyRepo(InterimKeyRepo):

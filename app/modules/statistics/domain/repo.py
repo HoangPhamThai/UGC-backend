@@ -79,3 +79,9 @@ class StatisticsRepo(ABC):
     async def list_qcs(self) -> list[QcRef]:
         """All users with role=qc, with their assigned products."""
         ...
+
+    @abstractmethod
+    async def email_map(self, ids: set[str]) -> dict[str, str]:
+        """Map each user id in `ids` to its email. Ids with no matching user are
+        omitted from the result. Empty input returns an empty dict."""
+        ...
