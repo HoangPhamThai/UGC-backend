@@ -17,6 +17,9 @@ from app.modules.statistics.domain.usecases.list_all_articles import (
 from app.modules.statistics.domain.usecases.list_qc_articles import (
     ListQcArticlesUseCase,
 )
+from app.modules.statistics.domain.usecases.get_article_detail import (
+    GetArticleDetailUseCase,
+)
 
 
 def get_statistics_repo() -> StatisticsRepo:
@@ -57,3 +60,9 @@ def get_uc_list_qc_articles(
     repo: StatisticsRepo = Depends(get_statistics_repo),
 ) -> ListQcArticlesUseCase:
     return ListQcArticlesUseCase(repo=repo)
+
+
+def get_uc_get_article_detail(
+    repo: StatisticsRepo = Depends(get_statistics_repo),
+) -> GetArticleDetailUseCase:
+    return GetArticleDetailUseCase(repo=repo)

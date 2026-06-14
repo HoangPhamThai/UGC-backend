@@ -14,6 +14,9 @@ from app.modules.statistics.domain.usecases.list_creator_articles import (
 )
 from app.modules.statistics.domain.usecases.list_all_articles import ArticleRowEntry
 from app.modules.statistics.domain.usecases.list_qc_articles import QcArticleEntry
+from app.modules.statistics.domain.usecases.get_article_detail import (
+    ArticleDetailEntry,
+)
 
 
 class SummaryResponse(BaseModel):
@@ -194,3 +197,51 @@ class QcArticleRowResponse(BaseModel):
 class QcArticlesResponse(BaseModel):
     items: list[QcArticleRowResponse]
     total: int
+
+
+class ReviewSummaryResponse(BaseModel):
+    review_round: int
+    anchored_feedback_count: int
+    general_feedback_count: int
+
+
+class ArticleDetailResponse(BaseModel):
+    id: str
+    name: str
+    product: Product
+    status: ArticleStatus
+    on_air_date: date
+    created_at: int  # epoch ms
+    link: Optional[str] = None
+    link_submitted_at: Optional[int] = None  # epoch ms
+    extraction_status: Optional[str] = None
+    has_content: bool
+    metrics: Optional[MetricsBrief] = None
+    creator_email: Optional[str] = None
+    claimed_by_email: Optional[str] = None
+    reviewer_email: Optional[str] = None
+    review: ReviewSummaryResponse
+
+    @classmethod
+    def from_entry(cls, e: ArticleDetailEntry) -> "ArticleDetailResponse":
+        return cls(
+            id=e.id,
+            name=e.name,
+            product=e.product,
+            status=e.status,
+            on_air_date=e.on_air_date,
+            created_at=to_epoch_ms(e.created_at),
+            link=e.link,
+            link_submitted_at=to_epoch_ms(e.link_submitted_at) if e.link_submitted_at else None,
+            extraction_status=e.extraction_status,
+            has_content=e.has_content,
+            metrics=MetricsBrief.from_metrics(e.metrics),
+            creator_email=e.creator_email,
+            claimed_by_email=e.claimed_by_email,
+            reviewer_email=e.reviewer_email,
+            review=ReviewSummaryResponse(
+                review_round=e.review_round,
+                anchored_feedback_count=e.anchored_feedback_count,
+                general_feedback_count=e.general_feedback_count,
+            ),
+        )

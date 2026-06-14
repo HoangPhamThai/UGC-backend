@@ -12,12 +12,14 @@ from app.modules.workspaces.data.model import Product
 from app.modules.statistics.presentation.deps import (
     get_uc_get_qc_breakdown,
     get_uc_get_summary,
+    get_uc_get_article_detail,
     get_uc_list_all_articles,
     get_uc_list_creator_articles,
     get_uc_list_creators,
     get_uc_list_qc_articles,
 )
 from app.modules.statistics.presentation.schema import (
+    ArticleDetailResponse,
     ArticleListResponse,
     ArticleRowResponse,
     CreatorArticleItemResponse,
@@ -95,6 +97,19 @@ async def list_articles(
         total=result.total,
     )
     return create_success_response(data)
+
+
+@router.get(
+    "/articles/{article_id}",
+    response_model=StandardResponse[ArticleDetailResponse],
+)
+async def get_article_detail(
+    article_id: str,
+    current_user: User = Depends(require_permissions(Permission.STATS_READ)),
+    uc=Depends(get_uc_get_article_detail),
+):
+    entry = await uc.execute(article_id=article_id)
+    return create_success_response(ArticleDetailResponse.from_entry(entry))
 
 
 @router.get("/creators", response_model=StandardResponse[CreatorListResponse])
