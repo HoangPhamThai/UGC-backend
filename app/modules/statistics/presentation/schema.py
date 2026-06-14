@@ -17,6 +17,7 @@ from app.modules.statistics.domain.usecases.list_creator_articles import (
 class SummaryResponse(BaseModel):
     total: int
     awaiting_review: int
+    in_review: int
     approved: int
     rejected: int
     auto_approved: int
@@ -26,6 +27,7 @@ class SummaryResponse(BaseModel):
         return cls(
             total=c.total,
             awaiting_review=c.awaiting_review,
+            in_review=c.in_review,
             approved=c.approved,
             rejected=c.rejected,
             auto_approved=c.auto_approved,

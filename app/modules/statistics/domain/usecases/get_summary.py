@@ -12,12 +12,13 @@ from app.modules.statistics.domain.repo import StatisticsRepo
 class SummaryCounts:
     total: int
     awaiting_review: int
+    in_review: int
     approved: int
     rejected: int
     auto_approved: int
 
 
-_AWAITING = (ArticleStatus.SUBMITTED, ArticleStatus.EDITED)
+_FINAL = (ArticleStatus.APPROVED, ArticleStatus.REJECTED)
 
 
 @dataclass(frozen=True)
@@ -38,7 +39,10 @@ class GetSummaryUseCase(LoggerMixin):
 
         total = len(stats)
         awaiting = sum(
-            1 for a in stats if a.status in _AWAITING and a.claimed_by is None
+            1 for a in stats if a.status not in _FINAL and a.claimed_by is None
+        )
+        in_review = sum(
+            1 for a in stats if a.status not in _FINAL and a.claimed_by is not None
         )
         rejected = sum(1 for a in stats if a.status == ArticleStatus.REJECTED)
         approved = sum(
@@ -52,6 +56,7 @@ class GetSummaryUseCase(LoggerMixin):
         return SummaryCounts(
             total=total,
             awaiting_review=awaiting,
+            in_review=in_review,
             approved=approved,
             rejected=rejected,
             auto_approved=auto_approved,
