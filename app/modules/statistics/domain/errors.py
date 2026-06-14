@@ -15,3 +15,10 @@ class QcNotFoundError(StatisticsError):
 
     def __init__(self, message: str = "QC not found") -> None:
         super().__init__(message)
+
+
+class ArticleNotFoundError(StatisticsError):
+    """The requested article id does not exist. Maps to 404."""
+
+    def __init__(self, message: str = "Article not found") -> None:
+        super().__init__(message)

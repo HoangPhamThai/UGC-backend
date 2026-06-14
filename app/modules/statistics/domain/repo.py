@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Optional
 
-from app.modules.workspaces.data.model import ArticleStatus, PostMetrics, Product
+from app.modules.workspaces.data.model import Article, ArticleStatus, PostMetrics, Product
 
 
 @dataclass(frozen=True)
@@ -86,4 +86,19 @@ class StatisticsRepo(ABC):
     async def email_map(self, ids: set[str]) -> dict[str, str]:
         """Map each user id in `ids` to its email. Ids with no matching user are
         omitted from the result. Empty input returns an empty dict."""
+        ...
+
+    @abstractmethod
+    async def get_article_with_owner(
+        self, article_id: str
+    ) -> Optional[tuple[Article, str]]:
+        """The full article plus its creator (workspace owner) user id, or None if
+        the article does not exist."""
+        ...
+
+    @abstractmethod
+    async def feedback_counts(self, article_id: str) -> tuple[int, int]:
+        """Return (anchored, general) counts of PUBLISHED feedback for the article.
+        'anchored' = anchor.target_type != none; 'general' = target_type == none.
+        DRAFT feedback is excluded."""
         ...

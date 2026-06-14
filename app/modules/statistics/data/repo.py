@@ -10,10 +10,13 @@ from app.core.db import get_db
 from app.core.logging_mixin import LoggerMixin
 from app.modules.users.data.model import User, UserRole
 from app.modules.workspaces.data.model import (
+    AnchorTargetType,
     Article,
     ArticleEvent,
     ArticleEventType,
     ArticleStatus,
+    Feedback,
+    FeedbackStatus,
     Product,
     Workspace,
 )
@@ -37,6 +40,10 @@ class StatisticsDataRepository(LoggerMixin, StatisticsRepo):
     async def _users(self) -> AsyncCollection:
         db = await get_db()
         return db[User.Config.collection_name]
+
+    async def _feedbacks(self) -> AsyncCollection:
+        db = await get_db()
+        return db[Feedback.Config.collection_name]
 
     async def ensure_indexes(self) -> None:
         arts = await self._articles()
@@ -159,3 +166,34 @@ class StatisticsDataRepository(LoggerMixin, StatisticsRepo):
         async for doc in coll.find({"_id": {"$in": list(ids)}}, {"email": 1}):
             out[doc["_id"]] = doc["email"]
         return out
+
+    @override
+    async def get_article_with_owner(self, article_id):
+        coll = await self._articles()
+        doc = await coll.find_one({"_id": article_id})
+        if doc is None:
+            return None
+        article = Article.model_validate(doc)
+        db = await get_db()
+        ws = await db[Workspace.Config.collection_name].find_one(
+            {"_id": article.workspace_id}, {"owner_user_id": 1}
+        )
+        owner = ws["owner_user_id"] if ws else ""
+        return article, owner
+
+    @override
+    async def feedback_counts(self, article_id):
+        coll = await self._feedbacks()
+        anchored = 0
+        general = 0
+        # Load and count via the model so legacy null anchors coerce to NONE,
+        # matching the read-side semantics in ListFeedbacksUseCase.
+        async for doc in coll.find(
+            {"article_id": article_id, "status": {"$ne": FeedbackStatus.DRAFT.value}}
+        ):
+            fb = Feedback.model_validate(doc)
+            if fb.anchor.target_type == AnchorTargetType.NONE:
+                general += 1
+            else:
+                anchored += 1
+        return anchored, general

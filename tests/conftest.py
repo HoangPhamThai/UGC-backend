@@ -398,12 +398,16 @@ class FakeStatisticsRepo(StatisticsRepo):
         creators: Optional[list[CreatorRef]] = None,
         qcs: Optional[list[QcRef]] = None,
         emails: Optional[dict[str, str]] = None,
+        details: Optional[dict] = None,        # article_id -> (Article, owner_user_id)
+        fb_counts: Optional[dict] = None,       # article_id -> (anchored, general)
     ) -> None:
         self._stats = list(stats or [])
         self._auto = set(auto_ids or set())
         self._creators = list(creators or [])
         self._qcs = list(qcs or [])
         self._emails = dict(emails or {})
+        self._details = dict(details or {})
+        self._fb_counts = dict(fb_counts or {})
 
     async def list_article_stats(
         self,
@@ -446,6 +450,12 @@ class FakeStatisticsRepo(StatisticsRepo):
 
     async def email_map(self, ids):
         return {uid: self._emails[uid] for uid in ids if uid in self._emails}
+
+    async def get_article_with_owner(self, article_id):
+        return self._details.get(article_id)
+
+    async def feedback_counts(self, article_id):
+        return self._fb_counts.get(article_id, (0, 0))
 
 
 class FakeInterimKeyRepo(InterimKeyRepo):
