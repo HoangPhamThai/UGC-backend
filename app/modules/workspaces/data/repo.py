@@ -13,9 +13,11 @@ from app.modules.workspaces.data.model import (
     ArticleEvent,
     ArticleStatus,
     AWAITING_QC_STATUSES,
+    ExtractionStatus,
     Feedback,
     FeedbackReply,
     FeedbackStatus,
+    PostMetrics,
     Product,
     Workspace,
 )
@@ -289,6 +291,68 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
                     "link_submitted_at": now,
                     "link_edit_count": link_edit_count,
                     "updated_at": now,
+                    "extraction_status": ExtractionStatus.PENDING.value,
+                    "extraction_error": None,
+                    "extraction_attempts": 0,
+                    "extracted_at": None,
+                    "metrics": None,
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return Article.model_validate(doc) if doc else None
+
+    @override
+    async def record_extraction_success(
+        self, article_id: str, *, url: str, metrics: PostMetrics
+    ) -> Optional[Article]:
+        coll = await self._get_collection()
+        now = datetime.now(timezone.utc)
+        doc = await coll.find_one_and_update(
+            {"_id": article_id, "link": url},
+            {
+                "$set": {
+                    "metrics": metrics.model_dump(),
+                    "extraction_status": ExtractionStatus.EXTRACTED.value,
+                    "extracted_at": now,
+                    "extraction_error": None,
+                    "updated_at": now,
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return Article.model_validate(doc) if doc else None
+
+    @override
+    async def record_extraction_failure(
+        self, article_id: str, *, url: str, error: str
+    ) -> Optional[Article]:
+        coll = await self._get_collection()
+        now = datetime.now(timezone.utc)
+        doc = await coll.find_one_and_update(
+            {"_id": article_id, "link": url},
+            {
+                "$set": {
+                    "extraction_status": ExtractionStatus.FAILED.value,
+                    "extraction_error": error,
+                    "updated_at": now,
+                },
+                "$inc": {"extraction_attempts": 1},
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return Article.model_validate(doc) if doc else None
+
+    @override
+    async def set_extraction_pending(self, article_id: str) -> Optional[Article]:
+        coll = await self._get_collection()
+        doc = await coll.find_one_and_update(
+            {"_id": article_id},
+            {
+                "$set": {
+                    "extraction_status": ExtractionStatus.PENDING.value,
+                    "extraction_error": None,
+                    "updated_at": datetime.now(timezone.utc),
                 }
             },
             return_document=ReturnDocument.AFTER,

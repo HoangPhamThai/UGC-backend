@@ -10,6 +10,7 @@ from app.modules.workspaces.data.model import (
     Feedback,
     FeedbackReply,
     FeedbackStatus,
+    PostMetrics,
     Product,
     Workspace,
 )
@@ -106,7 +107,31 @@ class ArticleRepo(ABC):
         self, article_id: str, *, link: str, link_edit_count: int
     ) -> Optional[Article]:
         """Set link + link_submitted_at(now) + link_edit_count; bumps updated_at.
+        Also RESETS extraction state (status=pending, metrics=None, error=None,
+        attempts=0, extracted_at=None) since a new link must be re-extracted.
         Returns the updated Article, or None if not found."""
+        ...
+
+    @abstractmethod
+    async def record_extraction_success(
+        self, article_id: str, *, url: str, metrics: "PostMetrics"
+    ) -> Optional[Article]:
+        """Store metrics + status=extracted + extracted_at(now), clear error —
+        ONLY if the article's current link still equals `url` (else no-op/None,
+        guarding against a stale extraction overwriting a newer link)."""
+        ...
+
+    @abstractmethod
+    async def record_extraction_failure(
+        self, article_id: str, *, url: str, error: str
+    ) -> Optional[Article]:
+        """Set status=failed + error, increment extraction_attempts — ONLY if the
+        article's current link still equals `url` (else no-op/None)."""
+        ...
+
+    @abstractmethod
+    async def set_extraction_pending(self, article_id: str) -> Optional[Article]:
+        """Reset status=pending + clear error (used by the retry endpoint)."""
         ...
 
     @abstractmethod

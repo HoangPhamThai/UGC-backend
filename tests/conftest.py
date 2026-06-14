@@ -9,6 +9,7 @@ from app.modules.workspaces.data.model import (
     ArticleEvent,
     ArticleStatus,
     AWAITING_QC_STATUSES,
+    ExtractionStatus,
     Feedback,
     FeedbackReply,
     FeedbackStatus,
@@ -125,6 +126,38 @@ class FakeArticleRepo(ArticleRepo):
         a.link = link
         a.link_submitted_at = _now()
         a.link_edit_count = link_edit_count
+        a.extraction_status = ExtractionStatus.PENDING
+        a.extraction_error = None
+        a.extraction_attempts = 0
+        a.extracted_at = None
+        a.metrics = None
+        return a
+
+    async def record_extraction_success(self, article_id, *, url, metrics):
+        a = self.items.get(article_id)
+        if a is None or a.link != url:
+            return None
+        a.metrics = metrics
+        a.extraction_status = ExtractionStatus.EXTRACTED
+        a.extracted_at = _now()
+        a.extraction_error = None
+        return a
+
+    async def record_extraction_failure(self, article_id, *, url, error):
+        a = self.items.get(article_id)
+        if a is None or a.link != url:
+            return None
+        a.extraction_status = ExtractionStatus.FAILED
+        a.extraction_error = error
+        a.extraction_attempts += 1
+        return a
+
+    async def set_extraction_pending(self, article_id):
+        a = self.items.get(article_id)
+        if a is None:
+            return None
+        a.extraction_status = ExtractionStatus.PENDING
+        a.extraction_error = None
         return a
 
     async def update_status(
