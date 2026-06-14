@@ -1,0 +1,70 @@
+from typing import Optional
+
+from app.modules.reports.data.model import AcceptanceReport, ReportStatus
+from app.modules.reports.domain.repo import (
+    AcceptanceReportRepo,
+    EligibleArticle,
+    ReportSourceRepo,
+)
+
+
+class FakeReportSourceRepo(ReportSourceRepo):
+    def __init__(self, eligible: Optional[list[EligibleArticle]] = None,
+                 emails: Optional[dict] = None) -> None:
+        self._eligible = list(eligible or [])
+        self._emails = dict(emails or {})
+
+    async def list_eligible(self, *, start, end):
+        return list(self._eligible)
+
+    async def creator_emails(self, ids):
+        return {i: self._emails[i] for i in ids if i in self._emails}
+
+
+class FakeAcceptanceReportRepo(AcceptanceReportRepo):
+    def __init__(self, reports: Optional[list[AcceptanceReport]] = None) -> None:
+        self.items: dict[str, AcceptanceReport] = {r.id: r for r in (reports or [])}
+
+    async def create(self, report):
+        self.items[report.id] = report
+        return report
+
+    async def get_by_id(self, report_id):
+        return self.items.get(report_id)
+
+    async def get_by_creator_period(self, creator_user_id, period):
+        return next(
+            (r for r in self.items.values()
+             if r.creator_user_id == creator_user_id and r.period == period),
+            None,
+        )
+
+    async def list(self, *, period, status, creator_user_id):
+        out = list(self.items.values())
+        if period is not None:
+            out = [r for r in out if r.period == period]
+        if status is not None:
+            out = [r for r in out if r.status == status]
+        if creator_user_id is not None:
+            out = [r for r in out if r.creator_user_id == creator_user_id]
+        return out
+
+    async def finalize(self, report_id, *, finalized_by):
+        r = self.items.get(report_id)
+        if r is None:
+            return None
+        r.status = ReportStatus.FINAL
+        r.finalized_by = finalized_by
+        return r
+
+    async def delete(self, report_id):
+        self.items.pop(report_id, None)
+
+
+def make_eligible(article_id="art_1", owner="u_creator", views=100) -> EligibleArticle:
+    from datetime import date
+    return EligibleArticle(
+        article_id=article_id, owner_user_id=owner, name="A", product="CL",
+        platform="tiktok", on_air_date=date(2026, 6, 1),
+        link=f"https://x/{article_id}", views=views,
+    )
