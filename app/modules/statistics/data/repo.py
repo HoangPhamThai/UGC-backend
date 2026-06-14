@@ -45,6 +45,10 @@ class StatisticsDataRepository(LoggerMixin, StatisticsRepo):
         db = await get_db()
         return db[Feedback.Config.collection_name]
 
+    async def _workspaces(self) -> AsyncCollection:
+        db = await get_db()
+        return db[Workspace.Config.collection_name]
+
     async def ensure_indexes(self) -> None:
         arts = await self._articles()
         await arts.create_index([("created_at", ASCENDING)])
@@ -168,21 +172,25 @@ class StatisticsDataRepository(LoggerMixin, StatisticsRepo):
         return out
 
     @override
-    async def get_article_with_owner(self, article_id):
+    async def get_article_with_owner(self, article_id: str):
         coll = await self._articles()
         doc = await coll.find_one({"_id": article_id})
         if doc is None:
             return None
         article = Article.model_validate(doc)
-        db = await get_db()
-        ws = await db[Workspace.Config.collection_name].find_one(
+        ws_coll = await self._workspaces()
+        ws = await ws_coll.find_one(
             {"_id": article.workspace_id}, {"owner_user_id": 1}
         )
-        owner = ws["owner_user_id"] if ws else ""
+        if ws is None:
+            self.logger.warning("article %s has no workspace (orphaned)", article_id)
+            owner = ""
+        else:
+            owner = ws["owner_user_id"]
         return article, owner
 
     @override
-    async def feedback_counts(self, article_id):
+    async def feedback_counts(self, article_id: str):
         coll = await self._feedbacks()
         anchored = 0
         general = 0
