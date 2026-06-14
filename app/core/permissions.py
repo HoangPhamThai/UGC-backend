@@ -29,6 +29,8 @@ class Permission(str, Enum):
     ARTICLES_REVIEW = "articles:review"
     # --- Statistics (read-only aggregates) ---
     STATS_READ = "stats:read"
+    # --- Acceptance reports (admin-managed) ---
+    REPORTS_MANAGE = "reports:manage"
 
 
 ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
@@ -41,6 +43,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
             Permission.USERS_UPDATE_QC,
             Permission.WORKSPACES_READ_ANY,
             Permission.STATS_READ,
+            Permission.REPORTS_MANAGE,
         }
     ),
     UserRole.QC: frozenset(
