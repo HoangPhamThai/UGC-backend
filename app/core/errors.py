@@ -21,6 +21,12 @@ from app.modules.workspaces.domain.errors import (
 )
 from app.modules.statistics.domain.errors import CreatorNotFoundError, QcNotFoundError, StatisticsError
 from app.modules.chat.domain.errors import ChatError, ChatSessionNotFoundError
+from app.modules.reports.domain.errors import (
+    ReportError,
+    ReportNotFoundError,
+    ReportStateConflictError,
+    ReportValidationError,
+)
 
 
 def _envelope(message: str) -> dict:
@@ -87,6 +93,19 @@ async def chat_exception_handler(request: Request, exc: ChatError):
     return JSONResponse(status_code=status_code, content=_envelope(message))
 
 
+_REPORTS_STATUS: dict[type[ReportError], int] = {
+    ReportNotFoundError: 404,
+    ReportStateConflictError: 409,
+    ReportValidationError: 400,
+}
+
+
+async def reports_exception_handler(request: Request, exc: ReportError):
+    status_code = _REPORTS_STATUS.get(type(exc), 500)
+    message = str(exc) if str(exc) else "Internal error"
+    return JSONResponse(status_code=status_code, content=_envelope(message))
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
@@ -96,3 +115,5 @@ def register_exception_handlers(app: FastAPI) -> None:
         app.add_exception_handler(exc_cls, statistics_exception_handler)
     for exc_cls in _CHAT_STATUS:
         app.add_exception_handler(exc_cls, chat_exception_handler)
+    for exc_cls in _REPORTS_STATUS:
+        app.add_exception_handler(exc_cls, reports_exception_handler)
