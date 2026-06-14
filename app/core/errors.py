@@ -19,7 +19,7 @@ from app.modules.workspaces.domain.errors import (
     WorkspaceNameTakenError,
     WorkspaceNotFoundError,
 )
-from app.modules.statistics.domain.errors import CreatorNotFoundError, StatisticsError
+from app.modules.statistics.domain.errors import CreatorNotFoundError, QcNotFoundError, StatisticsError
 from app.modules.chat.domain.errors import ChatError, ChatSessionNotFoundError
 
 
@@ -66,6 +66,7 @@ async def domain_exception_handler(request: Request, exc: WorkspaceError):
 
 _STATISTICS_STATUS: dict[type[StatisticsError], int] = {
     CreatorNotFoundError: 404,
+    QcNotFoundError: 404,
 }
 
 
