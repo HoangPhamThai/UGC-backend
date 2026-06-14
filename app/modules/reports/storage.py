@@ -39,8 +39,10 @@ class MinioObjectStorage:
 
     async def put(self, key: str, data: bytes, *, content_type: str) -> None:
         await asyncio.to_thread(
-            self._client.put_object,
-            self._bucket, key, BytesIO(data), len(data),
+            lambda: self._client.put_object(
+                self._bucket, key, BytesIO(data), len(data),
+                content_type=content_type,
+            )
         )
 
     async def get(self, key: str) -> bytes:
