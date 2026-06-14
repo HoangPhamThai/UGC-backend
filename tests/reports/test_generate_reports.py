@@ -44,7 +44,7 @@ async def test_generate_creates_draft_locks_articles_and_stores_docx():
         articles=arts,
     )
     created = await uc.execute(
-        period="2026-06", article_award_price=500_000, tax_amount=50_000,
+        period="2026-06", article_award_price=500_000, tax_rate=0.05,
         created_by="u_admin",
     )
     assert len(created) == 1
@@ -52,6 +52,7 @@ async def test_generate_creates_draft_locks_articles_and_stores_docx():
     assert r.status == ReportStatus.DRAFT
     assert r.total_approved_articles == 2
     assert r.total_award == 1_000_000
+    assert r.tax == 50_000  # round(1_000_000 * 0.05)
     assert r.final_award == 950_000
     assert r.final_award_verbal
     assert await storage.get(r.object_key) == b"DOCX-BYTES"
@@ -71,7 +72,7 @@ async def test_generate_skips_creator_with_existing_period_report():
         reports=[existing],
     )
     created = await uc.execute(
-        period="2026-06", article_award_price=1, tax_amount=0, created_by="u_admin",
+        period="2026-06", article_award_price=1, tax_rate=0.0, created_by="u_admin",
     )
     assert created == []
 
@@ -87,7 +88,7 @@ async def test_generate_single_creator_filter():
         articles=arts,
     )
     created = await uc.execute(
-        period="2026-06", article_award_price=100, tax_amount=0,
+        period="2026-06", article_award_price=100, tax_rate=0.0,
         created_by="u_admin", creator_user_id="u_a",
     )
     assert len(created) == 1 and created[0].creator_user_id == "u_a"

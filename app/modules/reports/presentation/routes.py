@@ -59,7 +59,7 @@ async def generate_reports(
     created = await uc.execute(
         period=body.period,
         article_award_price=body.article_award_price,
-        tax_amount=body.tax_amount,
+        tax_rate=body.tax_rate,
         creator_user_id=body.creator_user_id,
         created_by=current_user.id,
     )

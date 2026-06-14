@@ -14,7 +14,7 @@ from app.modules.reports.domain.usecases.list_eligible import EligibleCreatorGro
 class GenerateReportsRequest(BaseModel):
     period: str = Field(..., pattern=r"^\d{4}-\d{2}$")
     article_award_price: int = Field(..., ge=0)
-    tax_amount: int = Field(default=0, ge=0)
+    tax_rate: float = Field(default=0.0, ge=0.0, le=1.0, description="e.g. 0.10 for 10%")
     creator_user_id: Optional[str] = Field(default=None)
 
 

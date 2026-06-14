@@ -46,7 +46,7 @@ class AcceptanceReport(BaseMongoModel):
     article_award_price: int = 0
     total_approved_articles: int = 0
     total_award: int = 0
-    tax: int = Field(default=0, description="tax_amount, admin-entered")
+    tax: int = Field(default=0, description="computed = round(total_award * tax_rate)")
     final_award: int = 0
     final_award_verbal: str = ""
 

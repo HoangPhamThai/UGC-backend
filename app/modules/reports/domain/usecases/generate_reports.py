@@ -33,12 +33,14 @@ class GenerateReportsUseCase(LoggerMixin):
         *,
         period: str,
         article_award_price: int,
-        tax_amount: int,
+        tax_rate: float,
         created_by: str,
         creator_user_id: Optional[str] = None,
     ) -> list[AcceptanceReport]:
-        if article_award_price < 0 or tax_amount < 0:
-            raise ReportValidationError("price and tax must be non-negative")
+        if article_award_price < 0:
+            raise ReportValidationError("price must be non-negative")
+        if not 0.0 <= tax_rate <= 1.0:
+            raise ReportValidationError("tax_rate must be between 0 and 1")
 
         start, end = period_bounds(period)
         eligible = await self.source_repo.list_eligible(start=start, end=end)
@@ -68,7 +70,8 @@ class GenerateReportsUseCase(LoggerMixin):
             ]
             count = len(line_items)
             total_award = article_award_price * count
-            final_award = total_award - tax_amount
+            tax = round(total_award * tax_rate)  # scales with count; never exceeds total
+            final_award = total_award - tax
 
             report = AcceptanceReport(
                 period=period,
@@ -79,7 +82,7 @@ class GenerateReportsUseCase(LoggerMixin):
                 article_award_price=article_award_price,
                 total_approved_articles=count,
                 total_award=total_award,
-                tax=tax_amount,
+                tax=tax,
                 final_award=final_award,
                 final_award_verbal=number_to_vietnamese(max(final_award, 0)),
                 object_key="placeholder",
