@@ -43,6 +43,9 @@ from app.modules.workspaces.domain.usecases.set_feedback_status import (
     SetFeedbackStatusUseCase,
 )
 from app.modules.workspaces.domain.usecases.submit_article import SubmitArticleUseCase
+from app.modules.workspaces.domain.usecases.submit_article_link import (
+    SubmitArticleLinkUseCase,
+)
 from app.modules.workspaces.domain.usecases.update_article import UpdateArticleUseCase
 from app.modules.workspaces.domain.usecases.update_feedback import UpdateFeedbackUseCase
 from app.modules.workspaces.domain.usecases.withdraw_article import (
@@ -124,6 +127,13 @@ def get_uc_delete_article() -> DeleteArticleUseCase:
 
 def get_uc_update_article() -> UpdateArticleUseCase:
     return UpdateArticleUseCase(
+        workspace_repo=get_workspace_repo(),
+        article_repo=get_article_repo(),
+    )
+
+
+def get_uc_submit_article_link() -> SubmitArticleLinkUseCase:
+    return SubmitArticleLinkUseCase(
         workspace_repo=get_workspace_repo(),
         article_repo=get_article_repo(),
     )

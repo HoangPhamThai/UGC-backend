@@ -52,6 +52,10 @@ class UpdateArticleRequest(BaseModel):
         return self
 
 
+class SubmitArticleLinkRequest(BaseModel):
+    link: str = Field(..., min_length=1, max_length=2000)
+
+
 # --- Responses ---
 
 
@@ -71,6 +75,9 @@ class ArticleResponse(BaseModel):
     review_round: int = 0
     reject_reason: Optional[str] = None
     reviewed_content: Optional[str] = None
+    link: Optional[str] = None
+    link_edit_count: int = 0
+    report_id: Optional[str] = None
 
     @classmethod
     def from_model(cls, article: Article) -> "ArticleResponse":
@@ -88,6 +95,9 @@ class ArticleResponse(BaseModel):
             review_round=article.review_round,
             reject_reason=article.reject_reason,
             reviewed_content=article.reviewed_content,
+            link=article.link,
+            link_edit_count=article.link_edit_count,
+            report_id=article.report_id,
         )
 
 

@@ -24,6 +24,7 @@ from app.modules.workspaces.presentation.deps import (
     get_uc_reject_article,
     get_uc_set_feedback_status,
     get_uc_submit_article,
+    get_uc_submit_article_link,
     get_uc_update_article,
     get_uc_update_feedback,
     get_uc_withdraw_article,
@@ -37,6 +38,7 @@ from app.modules.workspaces.presentation.schema import (
     FeedbackResponse,
     RejectArticleRequest,
     SetFeedbackStatusRequest,
+    SubmitArticleLinkRequest,
     UpdateArticleRequest,
     UpdateFeedbackBodyRequest,
     WorkspaceListResponse,
@@ -191,6 +193,27 @@ async def update_article(
         content=body.content,
     )
     return create_success_response(ArticleResponse.from_model(article))
+
+
+@router.post(
+    "/{workspace_id}/articles/{article_id}/link",
+    response_model=StandardResponse[ArticleResponse],
+    dependencies=[Depends(require_profile_complete)],
+)
+async def submit_article_link(
+    workspace_id: str = Path(...),
+    article_id: str = Path(...),
+    body: SubmitArticleLinkRequest = Body(...),
+    current_user: User = Depends(require_permissions(Permission.ARTICLES_UPDATE)),
+    uc=Depends(get_uc_submit_article_link),
+):
+    article = await uc.execute(
+        workspace_id=workspace_id,
+        article_id=article_id,
+        caller=current_user,
+        link=body.link,
+    )
+    return create_success_response(ArticleResponse.from_model(article), "Link saved")
 
 
 @router.post(
