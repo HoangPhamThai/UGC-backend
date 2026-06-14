@@ -20,6 +20,10 @@ from app.modules.reports.domain.usecases.query_reports import (
 from app.modules.reports.domain.usecases.report_statistics import ReportStatisticsUseCase
 from app.modules.reports.rendering import render_acceptance_report
 from app.modules.reports.storage import ObjectStorage, get_object_storage
+from app.modules.reports.domain.usecases.recheck_link_metrics import (
+    RecheckLinkMetricsUseCase,
+)
+from app.modules.workspaces.extraction.deps import get_extractor
 from app.modules.workspaces.presentation.deps import get_article_repo
 
 
@@ -82,3 +86,9 @@ def get_uc_download_report() -> DownloadReportUseCase:
 
 def get_uc_report_statistics() -> ReportStatisticsUseCase:
     return ReportStatisticsUseCase(report_repo=get_report_repo())
+
+
+def get_uc_recheck_link_metrics() -> RecheckLinkMetricsUseCase:
+    return RecheckLinkMetricsUseCase(
+        article_repo=get_article_repo(), extractor=get_extractor()
+    )

@@ -17,11 +17,13 @@ from app.modules.reports.presentation.deps import (
     get_uc_list_eligible,
     get_uc_list_my_reports,
     get_uc_list_reports,
+    get_uc_recheck_link_metrics,
     get_uc_report_statistics,
 )
 from app.modules.reports.presentation.schema import (
     EligibleGroupResponse,
     GenerateReportsRequest,
+    RecheckResponse,
     ReportResponse,
     ReportStatisticsResponse,
 )
@@ -157,3 +159,16 @@ async def download_my_report(
         report_id=report_id, require_creator_id=current_user.id
     )
     return _docx_response(filename, data)
+
+
+@router.post(
+    "/reports/articles/{article_id}/recheck",
+    response_model=StandardResponse[RecheckResponse],
+)
+async def recheck_article_metrics(
+    article_id: str = Path(...),
+    current_user: User = Depends(require_permissions(Permission.REPORTS_READ)),
+    uc=Depends(get_uc_recheck_link_metrics),
+):
+    result = await uc.execute(article_id=article_id)
+    return create_success_response(RecheckResponse.from_result(result))

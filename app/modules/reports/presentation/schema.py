@@ -8,7 +8,9 @@ from app.core.model import to_epoch_ms as _to_epoch_ms
 from app.modules.reports.data.model import AcceptanceReport, ReportStatus
 from app.modules.reports.domain.repo import EligibleArticle
 from app.modules.reports.domain.usecases.list_eligible import EligibleCreatorGroup
+from app.modules.reports.domain.usecases.recheck_link_metrics import RecheckResult
 from app.modules.reports.domain.usecases.report_statistics import ReportStatistics
+from app.modules.workspaces.data.model import PostMetrics
 
 
 # --- Requests ---
@@ -93,3 +95,13 @@ class ReportStatisticsResponse(BaseModel):
             period=s.period, draft_count=s.draft_count, final_count=s.final_count,
             creator_count=s.creator_count, total_final_award=s.total_final_award,
         )
+
+
+class RecheckResponse(BaseModel):
+    stored: Optional[PostMetrics] = None
+    fresh: PostMetrics
+    diff: dict
+
+    @classmethod
+    def from_result(cls, r: RecheckResult) -> "RecheckResponse":
+        return cls(stored=r.stored, fresh=r.fresh, diff=r.diff)
