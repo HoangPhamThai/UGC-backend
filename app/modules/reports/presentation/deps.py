@@ -6,7 +6,8 @@ from app.modules.reports.data.repo import (
     AcceptanceReportDataRepository,
     ReportSourceDataRepository,
 )
-from app.modules.reports.domain.repo import AcceptanceReportRepo, ReportSourceRepo
+from app.modules.reports.data.template_repo import TemplateDataRepository
+from app.modules.reports.domain.repo import AcceptanceReportRepo, ReportSourceRepo, TemplateRepo
 from app.modules.reports.domain.usecases.delete_report import DeleteReportUseCase
 from app.modules.reports.domain.usecases.download_report import DownloadReportUseCase
 from app.modules.reports.domain.usecases.finalize_report import FinalizeReportUseCase
@@ -41,6 +42,11 @@ def _storage() -> ObjectStorage:
     return get_object_storage()
 
 
+@lru_cache(maxsize=1)
+def get_template_repo() -> TemplateRepo:
+    return TemplateDataRepository(storage=get_object_storage())
+
+
 def get_uc_list_eligible() -> ListEligibleUseCase:
     return ListEligibleUseCase(
         source_repo=get_report_source_repo(), profile_repo=get_profile_repo()
@@ -55,6 +61,7 @@ def get_uc_generate_reports() -> GenerateReportsUseCase:
         article_repo=get_article_repo(),
         storage=_storage(),
         render=render_acceptance_report,
+        template_repo=get_template_repo(),
     )
 
 

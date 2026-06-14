@@ -6,7 +6,7 @@ from app.core.logging_mixin import LoggerMixin
 from app.modules.profiles.domain.repo import CreatorProfileRepo
 from app.modules.reports.data.model import AcceptanceReport, LineItem
 from app.modules.reports.domain.errors import ReportValidationError
-from app.modules.reports.domain.repo import AcceptanceReportRepo, ReportSourceRepo
+from app.modules.reports.domain.repo import AcceptanceReportRepo, ReportSourceRepo, TemplateRepo
 from app.modules.reports.helpers import DOCX_MIME, period_bounds, report_to_render_inputs
 from app.modules.reports.numbers import number_to_vietnamese
 from app.modules.reports.storage import ObjectStorage
@@ -26,7 +26,8 @@ class GenerateReportsUseCase(LoggerMixin):
     profile_repo: CreatorProfileRepo
     article_repo: ArticleRepo
     storage: ObjectStorage
-    render: Callable[..., bytes]  # render_acceptance_report(*, scalars, line_items)
+    render: Callable[..., bytes]  # render_acceptance_report(*, scalars, line_items, template_bytes)
+    template_repo: TemplateRepo
 
     async def execute(
         self,
@@ -44,6 +45,7 @@ class GenerateReportsUseCase(LoggerMixin):
 
         start, end = period_bounds(period)
         eligible = await self.source_repo.list_eligible(start=start, end=end)
+        template_bytes = await self.template_repo.get_active_bytes()
 
         by_creator: dict[str, list] = {}
         for a in eligible:
@@ -90,7 +92,7 @@ class GenerateReportsUseCase(LoggerMixin):
             report.object_key = f"reports/{period}/{report.id}.docx"
 
             scalars, items = report_to_render_inputs(report)
-            docx_bytes = self.render(scalars=scalars, line_items=items)
+            docx_bytes = self.render(scalars=scalars, line_items=items, template_bytes=template_bytes)
             await self.storage.put(report.object_key, docx_bytes, content_type=DOCX_MIME)
             await self.report_repo.create(report)
             for a in ordered:

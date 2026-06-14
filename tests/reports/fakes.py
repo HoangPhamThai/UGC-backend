@@ -5,6 +5,8 @@ from app.modules.reports.domain.repo import (
     AcceptanceReportRepo,
     EligibleArticle,
     ReportSourceRepo,
+    TemplateMeta,
+    TemplateRepo,
 )
 
 
@@ -59,6 +61,21 @@ class FakeAcceptanceReportRepo(AcceptanceReportRepo):
 
     async def delete(self, report_id):
         self.items.pop(report_id, None)
+
+
+class FakeTemplateRepo(TemplateRepo):
+    def __init__(self, active_bytes=None):
+        self._bytes = active_bytes
+
+    async def get_meta(self):
+        return TemplateMeta(filename="tpl.docx", uploaded_by="u", uploaded_at=None) if self._bytes else None
+
+    async def get_active_bytes(self):
+        return self._bytes
+
+    async def save(self, *, data, filename, uploaded_by):
+        self._bytes = data
+        return TemplateMeta(filename=filename, uploaded_by=uploaded_by, uploaded_at=None)
 
 
 def make_eligible(article_id="art_1", owner="u_creator", views=100) -> EligibleArticle:
