@@ -8,9 +8,11 @@ from app.modules.workspaces.data.model import (
     AnchorTargetType,
     Article,
     ArticleStatus,
+    ExtractionStatus,
     Feedback,
     FeedbackReply,
     FeedbackStatus,
+    PostMetrics,
     Product,
     Workspace,
 )
@@ -78,6 +80,10 @@ class ArticleResponse(BaseModel):
     link: Optional[str] = None
     link_edit_count: int = 0
     report_id: Optional[str] = None
+    extraction_status: Optional[ExtractionStatus] = None
+    extraction_attempts: int = 0
+    extracted_at: Optional[int] = None
+    metrics: Optional[PostMetrics] = None
 
     @classmethod
     def from_model(cls, article: Article) -> "ArticleResponse":
@@ -98,6 +104,12 @@ class ArticleResponse(BaseModel):
             link=article.link,
             link_edit_count=article.link_edit_count,
             report_id=article.report_id,
+            extraction_status=article.extraction_status,
+            extraction_attempts=article.extraction_attempts,
+            extracted_at=(
+                _to_epoch_ms(article.extracted_at) if article.extracted_at else None
+            ),
+            metrics=article.metrics,
         )
 
 
