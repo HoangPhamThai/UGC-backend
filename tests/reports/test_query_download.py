@@ -41,6 +41,7 @@ async def test_admin_list_filters():
     uc = ListReportsUseCase(report_repo=repo, source_repo=FakeReportSourceRepo())
     drafts = await uc.execute(period="2026-06", status=ReportStatus.DRAFT, creator_user_id=None)
     assert [r.report.id for r in drafts] == ["rpt_2"]
+    assert all(rw.email is None for rw in drafts)
 
 
 @pytest.mark.asyncio
