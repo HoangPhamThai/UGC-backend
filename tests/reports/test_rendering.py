@@ -33,6 +33,7 @@ def _scalars() -> dict:
         "creator_bank": "Bank",
         "creatir_bank_branch": "Branch",
         "total_approved_articles": "2",
+        "total_articles": "2",
         "article_award_price": "500000",
         "total_award": "1000000",
         "tax": "100000",
