@@ -8,7 +8,6 @@ WORKDIR /app
 
 # Copy requirements first for better caching
 COPY requirements.txt .
-COPY .env .
 
 # Install dependencies (playwright==1.49.0 matches the browsers baked into the image)
 RUN pip install --no-cache-dir -r requirements.txt
@@ -23,4 +22,4 @@ EXPOSE 8080
 ENV PYTHONPATH=/app
 
 # Start the FastAPI server
-CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "2", "--reload"]
+CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "2"]
