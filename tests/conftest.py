@@ -35,6 +35,8 @@ from app.modules.interim_keys.data.model import InterimKey
 from app.modules.interim_keys.domain.repo import InterimKeyRepo
 from app.modules.chat.data.model import ChatMessage, ChatRole, ChatSession
 from app.modules.chat.domain.repo import ChatSessionRepo, ChatSessionSummary
+from app.modules.review_jobs.data.model import ReviewCard, ReviewJob, ReviewJobStatus
+from app.modules.review_jobs.domain.repo import ReviewJobRepo
 
 
 def _now() -> datetime:
@@ -575,6 +577,41 @@ class FakeChatSessionRepo(ChatSessionRepo):
         return s
 
 
+class FakeReviewJobRepo(ReviewJobRepo):
+    def __init__(self, jobs: Optional[list[ReviewJob]] = None) -> None:
+        self.items: dict[str, ReviewJob] = {j.id: j for j in (jobs or [])}
+
+    async def create(self, job: ReviewJob) -> ReviewJob:
+        self.items[job.id] = job
+        return job
+
+    async def get_by_id(self, job_id: str) -> Optional[ReviewJob]:
+        return self.items.get(job_id)
+
+    async def set_total(self, job_id: str, total: int) -> Optional[ReviewJob]:
+        job = self.items.get(job_id)
+        if job is None:
+            return None
+        job.total = total
+        job.status = ReviewJobStatus.EVALUATING
+        return job
+
+    async def append_result(self, job_id: str, card: ReviewCard) -> Optional[ReviewJob]:
+        job = self.items.get(job_id)
+        if job is None:
+            return None
+        job.results.append(card)
+        return job
+
+    async def finalize(self, job_id: str, status: ReviewJobStatus, *, error=None) -> Optional[ReviewJob]:
+        job = self.items.get(job_id)
+        if job is None:
+            return None
+        job.status = status
+        job.error = error
+        return job
+
+
 # --- Builders / fixtures ---
 
 
@@ -615,6 +652,12 @@ def make_article(
 def make_chat_session(*, sid="cs_1", user_id="u_admin", title="", messages=None) -> ChatSession:
     return ChatSession(
         id=sid, user_id=user_id, title=title, messages=messages or []
+    )
+
+
+def make_review_job(*, jid="rj_1", owner_user_id="u_qc", article_id="a_1", workspace_id="w_1"):
+    return ReviewJob(
+        _id=jid, owner_user_id=owner_user_id, article_id=article_id, workspace_id=workspace_id
     )
 
 
