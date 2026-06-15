@@ -95,7 +95,9 @@ def get_uc_delete_report() -> DeleteReportUseCase:
 
 
 def get_uc_download_report() -> DownloadReportUseCase:
-    return DownloadReportUseCase(report_repo=get_report_repo(), storage=_storage())
+    return DownloadReportUseCase(
+        report_repo=get_report_repo(), storage=_storage(), source_repo=get_report_source_repo()
+    )
 
 
 def get_uc_report_statistics() -> ReportStatisticsUseCase:
