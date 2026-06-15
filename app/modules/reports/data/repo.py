@@ -102,7 +102,11 @@ class AcceptanceReportDataRepository(LoggerMixin, AcceptanceReportRepo):
             [("creator_user_id", ASCENDING), ("period", ASCENDING)],
             unique=True,
             partialFilterExpression={
-                "status": {"$in": [ReportStatus.DRAFT.value, ReportStatus.FINAL.value]}
+                "status": {"$in": [
+                    ReportStatus.DRAFT.value,
+                    ReportStatus.REVIEWING.value,
+                    ReportStatus.FINAL.value,
+                ]}
             },
             name="uniq_active_creator_period",
         )
@@ -129,7 +133,11 @@ class AcceptanceReportDataRepository(LoggerMixin, AcceptanceReportRepo):
             {
                 "creator_user_id": creator_user_id,
                 "period": period,
-                "status": {"$in": [ReportStatus.DRAFT.value, ReportStatus.FINAL.value]},
+                "status": {"$in": [
+                    ReportStatus.DRAFT.value,
+                    ReportStatus.REVIEWING.value,
+                    ReportStatus.FINAL.value,
+                ]},
             }
         )
         return AcceptanceReport.model_validate(doc) if doc else None
@@ -197,3 +205,47 @@ class AcceptanceReportDataRepository(LoggerMixin, AcceptanceReportRepo):
     async def delete(self, report_id: str) -> None:
         coll = await self._get_collection()
         await coll.delete_one({"_id": report_id})
+
+    @override
+    async def update_line_item_image(
+        self, report_id: str, article_id: str, image_key: str
+    ) -> Optional[AcceptanceReport]:
+        coll = await self._get_collection()
+        now = datetime.now(timezone.utc)
+        doc = await coll.find_one_and_update(
+            {"_id": report_id, "line_items.article_id": article_id},
+            {"$set": {"line_items.$.article_image": image_key, "updated_at": now}},
+            return_document=ReturnDocument.AFTER,
+        )
+        return AcceptanceReport.model_validate(doc) if doc else None
+
+    @override
+    async def submit(self, report_id: str) -> Optional[AcceptanceReport]:
+        coll = await self._get_collection()
+        now = datetime.now(timezone.utc)
+        doc = await coll.find_one_and_update(
+            {"_id": report_id, "status": ReportStatus.DRAFT.value},
+            {"$set": {"status": ReportStatus.REVIEWING.value, "updated_at": now}},
+            return_document=ReturnDocument.AFTER,
+        )
+        return AcceptanceReport.model_validate(doc) if doc else None
+
+    @override
+    async def approve(
+        self, report_id: str, *, approved_by: str
+    ) -> Optional[AcceptanceReport]:
+        coll = await self._get_collection()
+        now = datetime.now(timezone.utc)
+        doc = await coll.find_one_and_update(
+            {"_id": report_id, "status": ReportStatus.REVIEWING.value},
+            {
+                "$set": {
+                    "status": ReportStatus.FINAL.value,
+                    "finalized_by": approved_by,
+                    "finalized_at": now,
+                    "updated_at": now,
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return AcceptanceReport.model_validate(doc) if doc else None

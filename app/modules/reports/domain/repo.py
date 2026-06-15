@@ -91,3 +91,16 @@ class AcceptanceReportRepo(ABC):
 
     @abstractmethod
     async def delete(self, report_id: str) -> None: ...
+
+    @abstractmethod
+    async def update_line_item_image(
+        self, report_id: str, article_id: str, image_key: str
+    ) -> Optional[AcceptanceReport]: ...
+
+    @abstractmethod
+    async def submit(self, report_id: str) -> Optional[AcceptanceReport]: ...
+
+    @abstractmethod
+    async def approve(
+        self, report_id: str, *, approved_by: str
+    ) -> Optional[AcceptanceReport]: ...

@@ -38,7 +38,7 @@ class FakeAcceptanceReportRepo(AcceptanceReportRepo):
         return next(
             (r for r in self.items.values()
              if r.creator_user_id == creator_user_id and r.period == period
-             and r.status in (ReportStatus.DRAFT, ReportStatus.FINAL)),
+             and r.status in (ReportStatus.DRAFT, ReportStatus.REVIEWING, ReportStatus.FINAL)),
             None,
         )
 
@@ -70,6 +70,30 @@ class FakeAcceptanceReportRepo(AcceptanceReportRepo):
 
     async def delete(self, report_id):
         self.items.pop(report_id, None)
+
+    async def update_line_item_image(self, report_id, article_id, image_key):
+        r = self.items.get(report_id)
+        if r is None:
+            return None
+        for li in r.line_items:
+            if li.article_id == article_id:
+                li.article_image = image_key
+        return r
+
+    async def submit(self, report_id):
+        r = self.items.get(report_id)
+        if r is None:
+            return None
+        r.status = ReportStatus.REVIEWING
+        return r
+
+    async def approve(self, report_id, *, approved_by):
+        r = self.items.get(report_id)
+        if r is None:
+            return None
+        r.status = ReportStatus.FINAL
+        r.finalized_by = approved_by
+        return r
 
 
 class FakeTemplateRepo(TemplateRepo):
