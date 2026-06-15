@@ -9,6 +9,7 @@ from app.core.permissions import Permission, require_permissions
 from app.modules.reports.data.model import ReportStatus
 from app.modules.reports.helpers import DOCX_MIME
 from app.modules.reports.presentation.deps import (
+    get_uc_cancel_report,
     get_uc_delete_report,
     get_uc_download_report,
     get_uc_download_template,
@@ -168,6 +169,16 @@ async def regenerate_report(
 ):
     report = await uc.execute(report_id=report_id, regenerated_by=current_user.id)
     return create_success_response(ReportResponse.from_model(report), "Report regenerated")
+
+
+@router.post("/reports/{report_id}/cancel", response_model=StandardResponse[ReportResponse])
+async def cancel_report(
+    report_id: str = Path(...),
+    current_user: User = Depends(require_permissions(Permission.REPORTS_MANAGE)),
+    uc=Depends(get_uc_cancel_report),
+):
+    report = await uc.execute(report_id=report_id, cancelled_by=current_user.id)
+    return create_success_response(ReportResponse.from_model(report), "Report cancelled")
 
 
 @router.delete("/reports/{report_id}", response_model=StandardResponse)
