@@ -25,8 +25,12 @@ from app.modules.reports.storage import ObjectStorage, get_object_storage
 from app.modules.reports.domain.usecases.recheck_link_metrics import (
     RecheckLinkMetricsUseCase,
 )
+from app.modules.reports.domain.usecases.approve_report import ApproveReportUseCase
 from app.modules.reports.domain.usecases.cancel_report import CancelReportUseCase
+from app.modules.reports.domain.usecases.get_my_report import GetMyReportUseCase
 from app.modules.reports.domain.usecases.regenerate_report import RegenerateReportUseCase
+from app.modules.reports.domain.usecases.submit_report import SubmitReportUseCase
+from app.modules.reports.domain.usecases.upload_article_image import UploadArticleImageUseCase
 from app.modules.reports.domain.usecases.template import (
     DownloadTemplateUseCase,
     GetTemplateUseCase,
@@ -143,3 +147,28 @@ def get_uc_upload_template() -> UploadTemplateUseCase:
 
 def get_uc_download_template() -> DownloadTemplateUseCase:
     return DownloadTemplateUseCase(template_repo=get_template_repo())
+
+
+def get_uc_upload_article_image() -> UploadArticleImageUseCase:
+    return UploadArticleImageUseCase(report_repo=get_report_repo(), storage=_storage())
+
+
+def get_uc_submit_report() -> SubmitReportUseCase:
+    return SubmitReportUseCase(report_repo=get_report_repo())
+
+
+def get_uc_approve_report() -> ApproveReportUseCase:
+    return ApproveReportUseCase(
+        report_repo=get_report_repo(),
+        storage=_storage(),
+        render=render_acceptance_report,
+        template_repo=get_template_repo(),
+    )
+
+
+def get_uc_get_my_report() -> GetMyReportUseCase:
+    return GetMyReportUseCase(report_repo=get_report_repo())
+
+
+def get_storage():
+    return _storage()

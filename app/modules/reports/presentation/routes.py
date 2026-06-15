@@ -1,7 +1,7 @@
 # app/modules/reports/presentation/routes.py
 from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, File, Path, Query, Response, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Path, Query, Response, UploadFile, status
 
 from app.core.auth import get_current_user
 from app.core.model import StandardResponse, create_success_response
@@ -9,6 +9,7 @@ from app.core.permissions import Permission, require_permissions
 from app.modules.reports.data.model import ReportStatus
 from app.modules.reports.helpers import DOCX_MIME
 from app.modules.reports.presentation.deps import (
+    get_uc_approve_report,
     get_uc_cancel_report,
     get_uc_delete_report,
     get_uc_download_report,
@@ -16,6 +17,7 @@ from app.modules.reports.presentation.deps import (
     get_uc_download_template,
     get_uc_finalize_report,
     get_uc_generate_reports,
+    get_uc_get_my_report,
     get_uc_get_report,
     get_uc_get_template,
     get_uc_list_eligible,
@@ -24,15 +26,21 @@ from app.modules.reports.presentation.deps import (
     get_uc_recheck_link_metrics,
     get_uc_regenerate_report,
     get_uc_report_statistics,
+    get_uc_submit_report,
+    get_uc_upload_article_image,
     get_uc_upload_template,
+    get_storage,
 )
 from app.modules.reports.presentation.schema import (
     EligibleGroupResponse,
     GenerateReportsRequest,
+    LineItemResponse,
     RecheckResponse,
+    ReportDetailResponse,
     ReportResponse,
     ReportStatisticsResponse,
     TemplateMetaResponse,
+    _content_type_from_key,
 )
 from app.modules.users.data.model import User
 
@@ -150,6 +158,32 @@ async def upload_template(
     return create_success_response(TemplateMetaResponse.from_view(view), "Template updated")
 
 
+@router.post("/reports/{report_id}/approve", response_model=StandardResponse[ReportResponse])
+async def approve_report_route(
+    report_id: str = Path(...),
+    current_user: User = Depends(require_permissions(Permission.REPORTS_MANAGE)),
+    uc=Depends(get_uc_approve_report),
+):
+    report = await uc.execute(report_id=report_id, approved_by=current_user.id)
+    return create_success_response(ReportResponse.from_model(report), "Report approved")
+
+
+@router.get("/reports/{report_id}/images/{article_id}")
+async def get_report_image(
+    report_id: str = Path(...),
+    article_id: str = Path(...),
+    current_user: User = Depends(require_permissions(Permission.REPORTS_READ)),
+    uc=Depends(get_uc_get_report),
+    storage=Depends(get_storage),
+):
+    report = await uc.execute(report_id=report_id)
+    item = next((li for li in report.line_items if li.article_id == article_id), None)
+    if item is None or not item.article_image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    data = await storage.get(item.article_image)
+    return Response(content=data, media_type=_content_type_from_key(item.article_image))
+
+
 @router.get("/reports/{report_id}", response_model=StandardResponse[ReportResponse])
 async def get_report(
     report_id: str = Path(...),
@@ -227,6 +261,62 @@ async def list_my_reports(
 ):
     reports = await uc.execute(creator_user_id=current_user.id)
     return create_success_response([ReportResponse.from_model(r) for r in reports])
+
+
+@router.get("/me/reports/{report_id}", response_model=StandardResponse[ReportDetailResponse])
+async def get_my_report(
+    report_id: str = Path(...),
+    current_user: User = Depends(get_current_user),
+    uc=Depends(get_uc_get_my_report),
+):
+    report = await uc.execute(report_id=report_id, creator_user_id=current_user.id)
+    return create_success_response(ReportDetailResponse.from_detail_model(report))
+
+
+@router.post(
+    "/me/reports/{report_id}/images/{article_id}",
+    response_model=StandardResponse[ReportDetailResponse],
+)
+async def upload_my_report_image(
+    report_id: str = Path(...),
+    article_id: str = Path(...),
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    uc=Depends(get_uc_upload_article_image),
+):
+    data = await file.read()
+    report = await uc.execute(
+        report_id=report_id, article_id=article_id,
+        image_bytes=data, content_type=file.content_type or "image/jpeg",
+        uploader_user_id=current_user.id,
+    )
+    return create_success_response(ReportDetailResponse.from_detail_model(report))
+
+
+@router.post("/me/reports/{report_id}/submit", response_model=StandardResponse[ReportResponse])
+async def submit_my_report(
+    report_id: str = Path(...),
+    current_user: User = Depends(get_current_user),
+    uc=Depends(get_uc_submit_report),
+):
+    report = await uc.execute(report_id=report_id, submitter_user_id=current_user.id)
+    return create_success_response(ReportResponse.from_model(report))
+
+
+@router.get("/me/reports/{report_id}/images/{article_id}")
+async def get_my_report_image(
+    report_id: str = Path(...),
+    article_id: str = Path(...),
+    current_user: User = Depends(get_current_user),
+    uc=Depends(get_uc_get_my_report),
+    storage=Depends(get_storage),
+):
+    report = await uc.execute(report_id=report_id, creator_user_id=current_user.id)
+    item = next((li for li in report.line_items if li.article_id == article_id), None)
+    if item is None or not item.article_image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    data = await storage.get(item.article_image)
+    return Response(content=data, media_type=_content_type_from_key(item.article_image))
 
 
 @router.get("/me/reports/{report_id}/download")

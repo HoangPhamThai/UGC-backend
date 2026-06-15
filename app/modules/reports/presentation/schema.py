@@ -5,7 +5,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from app.core.model import to_epoch_ms as _to_epoch_ms
-from app.modules.reports.data.model import AcceptanceReport, ReportStatus
+from app.modules.reports.data.model import AcceptanceReport, LineItem, ReportStatus
 from app.modules.reports.domain.repo import EligibleArticle
 from app.modules.reports.domain.usecases.list_eligible import EligibleCreatorGroup
 from app.modules.reports.domain.usecases.recheck_link_metrics import RecheckResult
@@ -123,4 +123,42 @@ class TemplateMetaResponse(BaseModel):
             uploaded_by=v.uploaded_by,
             uploaded_at=_to_epoch_ms(v.uploaded_at) if v.uploaded_at else None,
             is_default=v.is_default,
+        )
+
+
+def _content_type_from_key(key: str) -> str:
+    ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
+    return {
+        "jpg": "image/jpeg", "jpeg": "image/jpeg",
+        "png": "image/png", "gif": "image/gif", "webp": "image/webp",
+    }.get(ext, "application/octet-stream")
+
+
+class LineItemResponse(BaseModel):
+    article_id: str
+    seq: int
+    platform: Optional[str]
+    on_air_date: str
+    link: Optional[str]
+    views: Optional[int]
+    has_image: bool
+
+    @classmethod
+    def from_line_item(cls, li: LineItem) -> "LineItemResponse":
+        return cls(
+            article_id=li.article_id, seq=li.seq, platform=li.platform,
+            on_air_date=li.on_air_date, link=li.link, views=li.views,
+            has_image=li.article_image is not None,
+        )
+
+
+class ReportDetailResponse(ReportResponse):
+    line_items: list[LineItemResponse]
+
+    @classmethod
+    def from_detail_model(cls, r: AcceptanceReport, email: Optional[str] = None) -> "ReportDetailResponse":
+        base = ReportResponse.from_model(r, email)
+        return cls(
+            **base.model_dump(),
+            line_items=[LineItemResponse.from_line_item(li) for li in r.line_items],
         )
