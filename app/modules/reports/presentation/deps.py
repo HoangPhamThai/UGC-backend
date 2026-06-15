@@ -10,6 +10,7 @@ from app.modules.reports.data.template_repo import TemplateDataRepository
 from app.modules.reports.domain.repo import AcceptanceReportRepo, ReportSourceRepo, TemplateRepo
 from app.modules.reports.domain.usecases.delete_report import DeleteReportUseCase
 from app.modules.reports.domain.usecases.download_report import DownloadReportUseCase
+from app.modules.reports.domain.usecases.preview_report import PreviewReportUseCase
 from app.modules.reports.domain.usecases.finalize_report import FinalizeReportUseCase
 from app.modules.reports.domain.usecases.generate_reports import GenerateReportsUseCase
 from app.modules.reports.domain.usecases.list_eligible import ListEligibleUseCase
@@ -112,6 +113,12 @@ def get_uc_regenerate_report() -> RegenerateReportUseCase:
 
 def get_uc_download_report() -> DownloadReportUseCase:
     return DownloadReportUseCase(
+        report_repo=get_report_repo(), storage=_storage(), source_repo=get_report_source_repo()
+    )
+
+
+def get_uc_preview_report() -> PreviewReportUseCase:
+    return PreviewReportUseCase(
         report_repo=get_report_repo(), storage=_storage(), source_repo=get_report_source_repo()
     )
 

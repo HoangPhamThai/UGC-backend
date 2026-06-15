@@ -126,6 +126,17 @@ async def test_download_filename_falls_back_to_creator_id_when_no_email():
     assert filename == "u_creator_report_6_2026.docx"
 
 
+@pytest.mark.asyncio
+async def test_admin_download_amended_rejected():
+    from app.modules.reports.domain.errors import ReportStateConflictError
+    repo = FakeAcceptanceReportRepo([_r("rpt_1", "u_a", ReportStatus.AMENDED)])
+    storage = InMemoryObjectStorage()
+    await storage.put("reports/2026-06/rpt_1.docx", b"x", content_type="application/x")
+    uc = DownloadReportUseCase(report_repo=repo, storage=storage, source_repo=FakeReportSourceRepo())
+    with pytest.raises(ReportStateConflictError):
+        await uc.execute(report_id="rpt_1", require_creator_id=None)
+
+
 def _report(rid: str, creator: str, created_at: datetime) -> AcceptanceReport:
     return AcceptanceReport(
         id=rid, period="2026-06", creator_user_id=creator, created_by="u_admin",

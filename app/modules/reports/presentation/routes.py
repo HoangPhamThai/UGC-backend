@@ -12,6 +12,7 @@ from app.modules.reports.presentation.deps import (
     get_uc_cancel_report,
     get_uc_delete_report,
     get_uc_download_report,
+    get_uc_preview_report,
     get_uc_download_template,
     get_uc_finalize_report,
     get_uc_generate_reports,
@@ -43,6 +44,14 @@ def _docx_response(filename: str, data: bytes) -> Response:
         content=data,
         media_type=DOCX_MIME,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _docx_inline_response(filename: str, data: bytes) -> Response:
+    return Response(
+        content=data,
+        media_type=DOCX_MIME,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
     )
 
 
@@ -201,6 +210,16 @@ async def download_report(
     return _docx_response(filename, data)
 
 
+@router.get("/reports/{report_id}/preview")
+async def preview_report(
+    report_id: str = Path(...),
+    current_user: User = Depends(require_permissions(Permission.REPORTS_MANAGE)),
+    uc=Depends(get_uc_preview_report),
+):
+    filename, data = await uc.execute(report_id=report_id, require_creator_id=None)
+    return _docx_inline_response(filename, data)
+
+
 @router.get("/me/reports", response_model=StandardResponse[list[ReportResponse]])
 async def list_my_reports(
     current_user: User = Depends(get_current_user),
@@ -220,6 +239,18 @@ async def download_my_report(
         report_id=report_id, require_creator_id=current_user.id
     )
     return _docx_response(filename, data)
+
+
+@router.get("/me/reports/{report_id}/preview")
+async def preview_my_report(
+    report_id: str = Path(...),
+    current_user: User = Depends(get_current_user),
+    uc=Depends(get_uc_preview_report),
+):
+    filename, data = await uc.execute(
+        report_id=report_id, require_creator_id=current_user.id
+    )
+    return _docx_inline_response(filename, data)
 
 
 @router.post(
