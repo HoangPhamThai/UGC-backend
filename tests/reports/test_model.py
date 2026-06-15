@@ -41,3 +41,8 @@ def test_line_item_carries_seq_and_views():
     r = _report()
     assert r.line_items[0].seq == 1
     assert r.line_items[0].views == 100
+
+
+def test_report_status_has_amended():
+    from app.modules.reports.data.model import ReportStatus
+    assert ReportStatus.AMENDED.value == "amended"

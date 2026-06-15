@@ -10,9 +10,10 @@ from app.core.model import BaseMongoModel, make_prefixed_id
 
 class ReportStatus(str, Enum):
     """Acceptance report lifecycle (spec §7). Drafts are admin-only; finals are
-    visible to the matching creator too."""
+    visible to the matching creator too. Amended = a final that was cancelled."""
     DRAFT = "draft"
     FINAL = "final"
+    AMENDED = "amended"
 
 
 class LineItem(BaseModel):
@@ -36,6 +37,8 @@ class AcceptanceReport(BaseMongoModel):
     created_by: str = Field(..., description="admin user id")
     finalized_by: Optional[str] = Field(default=None)
     finalized_at: Optional[datetime] = Field(default=None)
+    cancelled_by: Optional[str] = Field(default=None)
+    cancelled_at: Optional[datetime] = Field(default=None)
 
     creator_snapshot: dict = Field(
         default_factory=dict, description="CreatorProfile fields frozen at draft time"
