@@ -21,7 +21,7 @@ def _r(rid, creator, status, period="2026-06") -> AcceptanceReport:
 
 
 @pytest.mark.asyncio
-async def test_list_my_returns_own_final_and_amended():
+async def test_list_my_returns_own_draft_reviewing_final():
     repo = FakeAcceptanceReportRepo([
         _r("rpt_1", "u_a", ReportStatus.FINAL),
         _r("rpt_2", "u_a", ReportStatus.DRAFT),
@@ -31,7 +31,7 @@ async def test_list_my_returns_own_final_and_amended():
     uc = ListMyReportsUseCase(report_repo=repo)
     out = await uc.execute(creator_user_id="u_a")
     ids = {r.id for r in out}
-    assert ids == {"rpt_1", "rpt_4"}  # final + amended, not draft, not other creator
+    assert ids == {"rpt_1", "rpt_2"}  # draft + final, not amended, not other creator
 
 
 @pytest.mark.asyncio

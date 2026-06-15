@@ -42,7 +42,7 @@ class ListMyReportsUseCase(LoggerMixin):
     async def execute(self, *, creator_user_id: str) -> list[AcceptanceReport]:
         reports = await self.report_repo.list(
             period=None,
-            statuses=[ReportStatus.FINAL, ReportStatus.AMENDED],
+            statuses=[ReportStatus.DRAFT, ReportStatus.REVIEWING, ReportStatus.FINAL],
             creator_user_id=creator_user_id,
         )
         reports.sort(key=lambda r: r.created_at, reverse=True)  # newest first
