@@ -10,6 +10,7 @@ from app.modules.reports.domain.repo import EligibleArticle
 from app.modules.reports.domain.usecases.list_eligible import EligibleCreatorGroup
 from app.modules.reports.domain.usecases.recheck_link_metrics import RecheckResult
 from app.modules.reports.domain.usecases.report_statistics import ReportStatistics
+from app.modules.reports.domain.usecases.template import TemplateView
 from app.modules.workspaces.data.model import PostMetrics
 
 
@@ -60,6 +61,7 @@ class ReportResponse(BaseModel):
     id: str
     period: str
     creator_user_id: str
+    creator_email: Optional[str] = None
     status: ReportStatus
     total_approved_articles: int
     article_award_price: int
@@ -71,9 +73,10 @@ class ReportResponse(BaseModel):
     finalized_at: Optional[int] = None
 
     @classmethod
-    def from_model(cls, r: AcceptanceReport) -> "ReportResponse":
+    def from_model(cls, r: AcceptanceReport, email: Optional[str] = None) -> "ReportResponse":
         return cls(
             id=r.id, period=r.period, creator_user_id=r.creator_user_id,
+            creator_email=email,
             status=r.status, total_approved_articles=r.total_approved_articles,
             article_award_price=r.article_award_price, total_award=r.total_award,
             tax=r.tax, final_award=r.final_award, final_award_verbal=r.final_award_verbal,
@@ -105,3 +108,19 @@ class RecheckResponse(BaseModel):
     @classmethod
     def from_result(cls, r: RecheckResult) -> "RecheckResponse":
         return cls(stored=r.stored, fresh=r.fresh, diff=r.diff)
+
+
+class TemplateMetaResponse(BaseModel):
+    filename: str
+    uploaded_by: Optional[str] = None
+    uploaded_at: Optional[int] = None
+    is_default: bool
+
+    @classmethod
+    def from_view(cls, v: TemplateView) -> "TemplateMetaResponse":
+        return cls(
+            filename=v.filename,
+            uploaded_by=v.uploaded_by,
+            uploaded_at=_to_epoch_ms(v.uploaded_at) if v.uploaded_at else None,
+            is_default=v.is_default,
+        )

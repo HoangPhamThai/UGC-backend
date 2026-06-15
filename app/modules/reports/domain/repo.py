@@ -21,6 +21,29 @@ class EligibleArticle:
     views: Optional[int]
 
 
+@dataclass(frozen=True)
+class TemplateMeta:
+    filename: str
+    uploaded_by: Optional[str]
+    uploaded_at: Optional[datetime]
+
+
+class TemplateRepo(ABC):
+    @abstractmethod
+    async def get_meta(self) -> Optional[TemplateMeta]:
+        """Active uploaded template metadata, or None when only the default exists."""
+        ...
+
+    @abstractmethod
+    async def get_active_bytes(self) -> Optional[bytes]:
+        """Uploaded template bytes, or None when only the default exists."""
+        ...
+
+    @abstractmethod
+    async def save(self, *, data: bytes, filename: str, uploaded_by: str) -> TemplateMeta:
+        ...
+
+
 class ReportSourceRepo(ABC):
     @abstractmethod
     async def list_eligible(

@@ -134,7 +134,7 @@ class AcceptanceReportDataRepository(LoggerMixin, AcceptanceReportRepo):
             filt["status"] = status.value
         if creator_user_id is not None:
             filt["creator_user_id"] = creator_user_id
-        cursor = coll.find(filt).sort("created_at", ASCENDING)
+        cursor = coll.find(filt)  # ordering is the use-case's responsibility
         return [AcceptanceReport.model_validate(d) async for d in cursor]
 
     @override

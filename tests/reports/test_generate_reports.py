@@ -7,17 +7,17 @@ from app.modules.reports.storage import InMemoryObjectStorage
 from app.modules.workspaces.data.model import ArticleStatus
 from tests.conftest import FakeArticleRepo, make_article
 from tests.profiles.test_usecases import FakeProfileRepo
-from tests.reports.fakes import FakeAcceptanceReportRepo, FakeReportSourceRepo, make_eligible
+from tests.reports.fakes import FakeAcceptanceReportRepo, FakeReportSourceRepo, FakeTemplateRepo, make_eligible
 
 ALL_REQUIRED = {f: "x" for f in REQUIRED_PROFILE_FIELDS}
 
 
-def _uc(*, eligible, articles, reports=None, captured=None):
+def _uc(*, eligible, articles, reports=None, captured=None, active_template=None):
     storage = InMemoryObjectStorage()
 
-    def fake_render(*, scalars, line_items):
+    def fake_render(*, scalars, line_items, template_bytes=None):
         if captured is not None:
-            captured.append((scalars, line_items))
+            captured.append({"scalars": scalars, "line_items": line_items, "template_bytes": template_bytes})
         return b"DOCX-BYTES"
 
     return (
@@ -28,6 +28,7 @@ def _uc(*, eligible, articles, reports=None, captured=None):
             article_repo=FakeArticleRepo(articles),
             storage=storage,
             render=fake_render,
+            template_repo=FakeTemplateRepo(active_template),
         ),
         storage,
     )
@@ -92,3 +93,16 @@ async def test_generate_single_creator_filter():
         created_by="u_admin", creator_user_id="u_a",
     )
     assert len(created) == 1 and created[0].creator_user_id == "u_a"
+
+
+@pytest.mark.asyncio
+async def test_generate_passes_active_template_bytes_to_render():
+    captured: list[dict] = []
+    uc, _ = _uc(
+        eligible=[make_eligible("art_1", "u_a")],
+        articles=[make_article(status=ArticleStatus.APPROVED, aid="art_1", workspace_id="ws_1")],
+        captured=captured,
+        active_template=b"ACTIVE-TPL",
+    )
+    await uc.execute(period="2026-06", article_award_price=1, tax_rate=0.0, created_by="u_admin")
+    assert captured and captured[0]["template_bytes"] == b"ACTIVE-TPL"

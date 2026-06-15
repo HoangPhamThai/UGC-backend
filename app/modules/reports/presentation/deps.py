@@ -6,7 +6,8 @@ from app.modules.reports.data.repo import (
     AcceptanceReportDataRepository,
     ReportSourceDataRepository,
 )
-from app.modules.reports.domain.repo import AcceptanceReportRepo, ReportSourceRepo
+from app.modules.reports.data.template_repo import TemplateDataRepository
+from app.modules.reports.domain.repo import AcceptanceReportRepo, ReportSourceRepo, TemplateRepo
 from app.modules.reports.domain.usecases.delete_report import DeleteReportUseCase
 from app.modules.reports.domain.usecases.download_report import DownloadReportUseCase
 from app.modules.reports.domain.usecases.finalize_report import FinalizeReportUseCase
@@ -22,6 +23,11 @@ from app.modules.reports.rendering import render_acceptance_report
 from app.modules.reports.storage import ObjectStorage, get_object_storage
 from app.modules.reports.domain.usecases.recheck_link_metrics import (
     RecheckLinkMetricsUseCase,
+)
+from app.modules.reports.domain.usecases.template import (
+    DownloadTemplateUseCase,
+    GetTemplateUseCase,
+    UploadTemplateUseCase,
 )
 from app.modules.workspaces.extraction.deps import get_extractor
 from app.modules.workspaces.presentation.deps import get_article_repo
@@ -41,6 +47,11 @@ def _storage() -> ObjectStorage:
     return get_object_storage()
 
 
+@lru_cache(maxsize=1)
+def get_template_repo() -> TemplateRepo:
+    return TemplateDataRepository(storage=get_object_storage())
+
+
 def get_uc_list_eligible() -> ListEligibleUseCase:
     return ListEligibleUseCase(
         source_repo=get_report_source_repo(), profile_repo=get_profile_repo()
@@ -55,11 +66,14 @@ def get_uc_generate_reports() -> GenerateReportsUseCase:
         article_repo=get_article_repo(),
         storage=_storage(),
         render=render_acceptance_report,
+        template_repo=get_template_repo(),
     )
 
 
 def get_uc_list_reports() -> ListReportsUseCase:
-    return ListReportsUseCase(report_repo=get_report_repo())
+    return ListReportsUseCase(
+        report_repo=get_report_repo(), source_repo=get_report_source_repo()
+    )
 
 
 def get_uc_list_my_reports() -> ListMyReportsUseCase:
@@ -92,3 +106,15 @@ def get_uc_recheck_link_metrics() -> RecheckLinkMetricsUseCase:
     return RecheckLinkMetricsUseCase(
         article_repo=get_article_repo(), extractor=get_extractor()
     )
+
+
+def get_uc_get_template() -> GetTemplateUseCase:
+    return GetTemplateUseCase(template_repo=get_template_repo())
+
+
+def get_uc_upload_template() -> UploadTemplateUseCase:
+    return UploadTemplateUseCase(template_repo=get_template_repo())
+
+
+def get_uc_download_template() -> DownloadTemplateUseCase:
+    return DownloadTemplateUseCase(template_repo=get_template_repo())
