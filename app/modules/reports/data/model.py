@@ -12,6 +12,7 @@ class ReportStatus(str, Enum):
     """Acceptance report lifecycle (spec §7). Drafts are admin-only; finals are
     visible to the matching creator too. Amended = a final that was cancelled."""
     DRAFT = "draft"
+    REVIEWING = "reviewing"
     FINAL = "final"
     AMENDED = "amended"
 
@@ -24,6 +25,8 @@ class LineItem(BaseModel):
     on_air_date: str = Field(..., description="ISO date string for {article_on_air}")
     link: Optional[str] = None
     views: Optional[int] = None
+    article_image: Optional[str] = Field(default=None, description="MinIO object key for article image")
+    article_bonus_money: str = Field(default="  ", description="Bonus money placeholder — whitespace")
 
 
 class AcceptanceReport(BaseMongoModel):

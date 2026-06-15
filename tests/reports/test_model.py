@@ -46,3 +46,21 @@ def test_line_item_carries_seq_and_views():
 def test_report_status_has_amended():
     from app.modules.reports.data.model import ReportStatus
     assert ReportStatus.AMENDED.value == "amended"
+
+
+def test_reviewing_status_value():
+    assert ReportStatus.REVIEWING.value == "reviewing"
+
+
+def test_line_item_new_field_defaults():
+    li = LineItem(article_id="art_1", seq=1, on_air_date="2026-06-01")
+    assert li.article_image is None
+    assert li.article_bonus_money == "  "
+
+
+def test_line_item_accepts_article_image():
+    li = LineItem(
+        article_id="art_1", seq=1, on_air_date="2026-06-01",
+        article_image="reports/2026-06/rpt_1/images/art_1.jpg",
+    )
+    assert li.article_image == "reports/2026-06/rpt_1/images/art_1.jpg"
