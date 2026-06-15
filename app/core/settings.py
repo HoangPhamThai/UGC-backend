@@ -22,8 +22,9 @@ class Settings(BaseSettings):
     admin_email: Optional[str] = Field(default=None, alias="ADMIN_EMAIL")
     admin_password: Optional[str] = Field(default=None, alias="ADMIN_PASSWORD")
 
-    creator_email: Optional[str] = Field(default=None, alias="CREATOR_EMAIL")
-    creator_password: Optional[str] = Field(default=None, alias="CREATOR_PASSWORD")
+    # Comma-separated lists; emails[i] is paired with passwords[i].
+    creator_emails: Optional[str] = Field(default=None, alias="CREATOR_EMAILS")
+    creator_passwords: Optional[str] = Field(default=None, alias="CREATOR_PASSWORDS")
 
     qc_email: Optional[str] = Field(default=None, alias="QC_EMAIL")
     qc_password: Optional[str] = Field(default=None, alias="QC_PASSWORD")

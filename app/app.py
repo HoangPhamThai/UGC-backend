@@ -82,6 +82,23 @@ async def lifespan(app: FastAPI):
         user_repo=user_repo,
         uc_create_user=CreateUserUseCase(user_repo=user_repo),
     )
+
+    creator_emails = [
+        e.strip() for e in (settings.creator_emails or "").split(",") if e.strip()
+    ]
+    creator_passwords = [
+        p.strip() for p in (settings.creator_passwords or "").split(",") if p.strip()
+    ]
+    if len(creator_emails) != len(creator_passwords):
+        raise ValueError(
+            f"CREATOR_EMAILS ({len(creator_emails)}) and CREATOR_PASSWORDS "
+            f"({len(creator_passwords)}) must have the same number of entries"
+        )
+    creator_accounts = [
+        DefaultAccount(email=email, password=password, role=UserRole.CREATOR)
+        for email, password in zip(creator_emails, creator_passwords)
+    ]
+
     await bootstrap.execute(
         [
             DefaultAccount(
@@ -94,11 +111,7 @@ async def lifespan(app: FastAPI):
                 password=settings.admin_password,
                 role=UserRole.ADMIN,
             ),
-            DefaultAccount(
-                email=settings.creator_email,
-                password=settings.creator_password,
-                role=UserRole.CREATOR,
-            ),
+            *creator_accounts,
             DefaultAccount(
                 email=settings.qc_email,
                 password=settings.qc_password,
