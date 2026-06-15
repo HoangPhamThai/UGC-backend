@@ -98,6 +98,14 @@ class AcceptanceReportDataRepository(LoggerMixin, AcceptanceReportRepo):
             await coll.drop_index("creator_user_id_1_period_1")
         except Exception:  # noqa: BLE001 — legacy index may be absent on fresh DBs
             pass
+        # Drop the partial unique index too: its partialFilterExpression evolves
+        # (e.g. adding REVIEWING), and Mongo refuses to redefine a same-named
+        # index in place (IndexKeySpecsConflict). Recreate it below with the
+        # current spec.
+        try:
+            await coll.drop_index("uniq_active_creator_period")
+        except Exception:  # noqa: BLE001 — absent on fresh DBs or first migration
+            pass
         await coll.create_index(
             [("creator_user_id", ASCENDING), ("period", ASCENDING)],
             unique=True,
