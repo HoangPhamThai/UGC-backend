@@ -85,4 +85,9 @@ class AcceptanceReportRepo(ABC):
     ) -> Optional[AcceptanceReport]: ...
 
     @abstractmethod
+    async def cancel(
+        self, report_id: str, *, cancelled_by: str
+    ) -> Optional[AcceptanceReport]: ...
+
+    @abstractmethod
     async def delete(self, report_id: str) -> None: ...

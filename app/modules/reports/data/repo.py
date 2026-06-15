@@ -91,8 +91,20 @@ class AcceptanceReportDataRepository(LoggerMixin, AcceptanceReportRepo):
 
     async def ensure_indexes(self) -> None:
         coll = await self._get_collection()
+        # Migrate the legacy plain unique index to a partial one that ignores
+        # amended (cancelled) reports, so a new report can be created for the
+        # same (creator, period) after a final report is cancelled.
+        try:
+            await coll.drop_index("creator_user_id_1_period_1")
+        except Exception:  # noqa: BLE001 — legacy index may be absent on fresh DBs
+            pass
         await coll.create_index(
-            [("creator_user_id", ASCENDING), ("period", ASCENDING)], unique=True
+            [("creator_user_id", ASCENDING), ("period", ASCENDING)],
+            unique=True,
+            partialFilterExpression={
+                "status": {"$in": [ReportStatus.DRAFT.value, ReportStatus.FINAL.value]}
+            },
+            name="uniq_active_creator_period",
         )
         await coll.create_index([("period", ASCENDING), ("status", ASCENDING)])
 
@@ -114,7 +126,11 @@ class AcceptanceReportDataRepository(LoggerMixin, AcceptanceReportRepo):
     ) -> Optional[AcceptanceReport]:
         coll = await self._get_collection()
         doc = await coll.find_one(
-            {"creator_user_id": creator_user_id, "period": period}
+            {
+                "creator_user_id": creator_user_id,
+                "period": period,
+                "status": {"$in": [ReportStatus.DRAFT.value, ReportStatus.FINAL.value]},
+            }
         )
         return AcceptanceReport.model_validate(doc) if doc else None
 
@@ -150,6 +166,26 @@ class AcceptanceReportDataRepository(LoggerMixin, AcceptanceReportRepo):
                     "status": ReportStatus.FINAL.value,
                     "finalized_by": finalized_by,
                     "finalized_at": now,
+                    "updated_at": now,
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return AcceptanceReport.model_validate(doc) if doc else None
+
+    @override
+    async def cancel(
+        self, report_id: str, *, cancelled_by: str
+    ) -> Optional[AcceptanceReport]:
+        coll = await self._get_collection()
+        now = datetime.now(timezone.utc)
+        doc = await coll.find_one_and_update(
+            {"_id": report_id},
+            {
+                "$set": {
+                    "status": ReportStatus.AMENDED.value,
+                    "cancelled_by": cancelled_by,
+                    "cancelled_at": now,
                     "updated_at": now,
                 }
             },

@@ -37,7 +37,8 @@ class FakeAcceptanceReportRepo(AcceptanceReportRepo):
     async def get_by_creator_period(self, creator_user_id, period):
         return next(
             (r for r in self.items.values()
-             if r.creator_user_id == creator_user_id and r.period == period),
+             if r.creator_user_id == creator_user_id and r.period == period
+             and r.status in (ReportStatus.DRAFT, ReportStatus.FINAL)),
             None,
         )
 
@@ -57,6 +58,14 @@ class FakeAcceptanceReportRepo(AcceptanceReportRepo):
             return None
         r.status = ReportStatus.FINAL
         r.finalized_by = finalized_by
+        return r
+
+    async def cancel(self, report_id, *, cancelled_by):
+        r = self.items.get(report_id)
+        if r is None:
+            return None
+        r.status = ReportStatus.AMENDED
+        r.cancelled_by = cancelled_by
         return r
 
     async def delete(self, report_id):
