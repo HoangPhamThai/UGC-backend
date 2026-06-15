@@ -99,3 +99,57 @@ def test_render_uses_provided_template_bytes():
     document = docx.Document(BytesIO(out))
     text = _all_text(document)
     assert "Nguyen Van A" in text and "{" not in text
+
+
+def _minimal_docx_with_image_token() -> bytes:
+    """In-memory .docx with one table containing {article_image} in col 2."""
+    from docx import Document as D
+    doc = D()
+    tbl = doc.add_table(rows=1, cols=3)
+    tbl.cell(0, 0).text = "{article_platform}"
+    tbl.cell(0, 1).text = "{article_id_autoinc}"
+    tbl.cell(0, 2).text = "{article_image}"
+    buf = BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+def _1x1_png() -> bytes:
+    """Minimal valid 1x1 white PNG (no external deps)."""
+    import struct, zlib
+    def chunk(t, d):
+        return struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d) & 0xFFFFFFFF)
+    ihdr = struct.pack('>IIBBBBB', 1, 1, 8, 2, 0, 0, 0)
+    idat = zlib.compress(b'\x00\xff\xff\xff')
+    return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', idat) + chunk(b'IEND', b'')
+
+
+def test_render_embeds_image_replaces_token():
+    tpl = _minimal_docx_with_image_token()
+    png = _1x1_png()
+    item = {
+        "article_id": "art_1", "article_platform": "tiktok",
+        "article_id_autoinc": "1", "article_on_air": "2026-06-01",
+        "article_link": "https://x", "article_view": "100",
+        "article_image": "k/art_1.png", "article_bonus_money": "  ",
+    }
+    out = render_acceptance_report(
+        scalars={}, line_items=[item],
+        template_bytes=tpl,
+        line_item_images={"art_1": png},
+    )
+    doc = docx.Document(BytesIO(out))
+    assert "{article_image}" not in doc.tables[0].cell(0, 2).text
+
+
+def test_render_clears_token_when_no_image():
+    tpl = _minimal_docx_with_image_token()
+    item = {
+        "article_id": "art_1", "article_platform": "tiktok",
+        "article_id_autoinc": "1", "article_on_air": "2026-06-01",
+        "article_link": "https://x", "article_view": "100",
+        "article_image": "", "article_bonus_money": "  ",
+    }
+    out = render_acceptance_report(scalars={}, line_items=[item], template_bytes=tpl)
+    doc = docx.Document(BytesIO(out))
+    assert "{article_image}" not in doc.tables[0].cell(0, 2).text

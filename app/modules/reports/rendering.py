@@ -1,9 +1,3 @@
-# app/modules/reports/rendering.py
-"""Render the acceptance report .docx from the vendored template.
-
-Token replacement coalesces a paragraph's runs before substituting, because
-python-docx splits text across runs and a {token} can straddle runs. The Điều 2
-table's single data row is cloned once per line item."""
 import copy
 from io import BytesIO
 from pathlib import Path
@@ -14,12 +8,9 @@ from docx.table import Table, _Row
 
 from app.modules.reports.domain.errors import ReportValidationError
 
-# Tokens a usable template must contain; absence means generation would silently break.
 REQUIRED_TEMPLATE_TOKENS = ("{creator_name}", "{final_award}", "{article_platform}")
-
 TEMPLATE_PATH = str(Path(__file__).parent / "templates" / "acceptance_report.docx")
 
-# The per-row tokens that identify (and fill) the Điều 2 article table.
 _ROW_TOKEN = "{article_platform}"
 _ROW_KEYS = (
     "article_platform",
@@ -27,13 +18,12 @@ _ROW_KEYS = (
     "article_on_air",
     "article_link",
     "article_view",
+    "article_image",
+    "article_bonus_money",
 )
 
 
 def _replace_in_paragraph(paragraph, mapping: dict) -> None:
-    """Replace every {key} in the paragraph with mapping[key], coalescing runs.
-    Only rewrites when at least one token is present (preserves formatting
-    elsewhere)."""
     full = "".join(run.text for run in paragraph.runs)
     if "{" not in full:
         return
@@ -59,32 +49,52 @@ def _row_contains_token(row, token: str) -> bool:
     return any(token in cell.text for cell in row.cells)
 
 
+def _insert_image_in_cell(cell, image_bytes: bytes) -> None:
+    """Clear cell content and insert image, scaled to fit cell width."""
+    max_width = cell.width or 1_828_800  # fallback: 2 inches in EMU
+    for paragraph in cell.paragraphs:
+        for run in paragraph.runs:
+            run.text = ""
+    paragraph = cell.paragraphs[0]
+    run = paragraph.add_run()
+    pic = run.add_picture(BytesIO(image_bytes))
+    if pic.width > max_width:
+        scale = max_width / pic.width
+        pic.width = max_width
+        pic.height = int(pic.height * scale)
+
+
 def _fill_row(row, item: dict) -> None:
-    mapping = {k: str(item.get(k, "")) for k in _ROW_KEYS}
+    image_bytes: Optional[bytes] = item.get("_image_bytes")
+    mapping = {k: str(item.get(k, "")) for k in _ROW_KEYS if k != "article_image"}
     for cell in row.cells:
-        for paragraph in cell.paragraphs:
-            _replace_in_paragraph(paragraph, mapping)
+        cell_text = " ".join(p.text for p in cell.paragraphs)
+        if "{article_image}" in cell_text:
+            if image_bytes:
+                _insert_image_in_cell(cell, image_bytes)
+            else:
+                for paragraph in cell.paragraphs:
+                    _replace_in_paragraph(paragraph, {"article_image": ""})
+        else:
+            for paragraph in cell.paragraphs:
+                _replace_in_paragraph(paragraph, mapping)
 
 
 def render_acceptance_report(
-    *, scalars: dict, line_items: list[dict], template_bytes: Optional[bytes] = None
+    *,
+    scalars: dict,
+    line_items: list[dict],
+    template_bytes: Optional[bytes] = None,
+    line_item_images: Optional[dict[str, bytes]] = None,
 ) -> bytes:
-    """Fill the template and return the .docx as bytes. When `template_bytes` is
-    given, render from those bytes (the active uploaded template); otherwise fall
-    back to the vendored TEMPLATE_PATH.
-
-    `scalars` maps scalar token names (without braces) to string values, e.g.
-    {"creator_name": "...", "final_award": "900000"}. `line_items` is a list of
-    dicts keyed by the article_* token names for the Điều 2 rows."""
+    """Render acceptance report .docx. `line_item_images` maps article_id to image bytes;
+    when provided, images are embedded directly into the {article_image} table cell."""
     document = Document(BytesIO(template_bytes)) if template_bytes else Document(TEMPLATE_PATH)
     scalar_map = {k: str(v) for k, v in scalars.items()}
 
-    # Replace scalar tokens in body paragraphs.
     for paragraph in document.paragraphs:
         _replace_in_paragraph(paragraph, scalar_map)
 
-    # Find the article table (contains the row-template token) and its template row.
-    # Snapshot tables list once so we use consistent object identity via _tbl.
     tables = list(document.tables)
     article_table_idx = None
     template_row = None
@@ -97,27 +107,25 @@ def render_acceptance_report(
         if article_table_idx is not None:
             break
 
-    # Replace scalar tokens in all table cells, skipping the article template row.
     for idx, table in enumerate(tables):
         for row in table.rows:
-            # Skip the article template row itself — it will be cloned per item.
             if idx == article_table_idx and template_row is not None and row._tr is template_row._tr:
                 continue
             for cell in row.cells:
                 for paragraph in cell.paragraphs:
                     _replace_in_paragraph(paragraph, scalar_map)
 
-    # Clone the article template row once per line item, fill each clone,
-    # then remove the original template row.
     if template_row is not None and article_table_idx is not None:
         article_table = tables[article_table_idx]
         anchor_tr = template_row._tr
         ref = anchor_tr
+        images = line_item_images or {}
         for item in line_items:
+            enriched = {**item, "_image_bytes": images.get(item.get("article_id", ""))}
             new_tr = copy.deepcopy(anchor_tr)
             ref.addnext(new_tr)
             ref = new_tr
-            _fill_row(_Row(new_tr, article_table), item)
+            _fill_row(_Row(new_tr, article_table), enriched)
         anchor_tr.getparent().remove(anchor_tr)
 
     buffer = BytesIO()
