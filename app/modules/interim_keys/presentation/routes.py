@@ -14,7 +14,7 @@ from app.modules.users.data.model import User, UserRole
 
 router = APIRouter(tags=["interim-keys"])
 
-_ISSUER_ROLES = {UserRole.ADMIN, UserRole.SUPERUSER}
+_ISSUER_ROLES = {UserRole.ADMIN, UserRole.SUPERUSER, UserRole.QC}
 
 
 @router.post("/interim-key", response_model=StandardResponse[InterimKeyResponse])

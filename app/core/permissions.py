@@ -29,6 +29,7 @@ class Permission(str, Enum):
     ARTICLES_REVIEW = "articles:review"
     # --- Statistics (read-only aggregates) ---
     STATS_READ = "stats:read"
+    REVIEW_JOBS_WRITE = "review_jobs:write"
     # --- Acceptance reports (admin-managed) ---
     REPORTS_MANAGE = "reports:manage"
     REPORTS_READ = "reports:read"
@@ -46,6 +47,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
             Permission.STATS_READ,
             Permission.REPORTS_MANAGE,
             Permission.REPORTS_READ,
+            Permission.REVIEW_JOBS_WRITE,
         }
     ),
     UserRole.QC: frozenset(
@@ -53,6 +55,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
             Permission.USERS_READ_CREATOR,
             Permission.WORKSPACES_READ_BY_PRODUCT,
             Permission.ARTICLES_REVIEW,
+            Permission.REVIEW_JOBS_WRITE,
         }
     ),
     UserRole.CREATOR: frozenset(
@@ -72,7 +75,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
 # only — never mutations. The chat/memory endpoints don't go through
 # require_permissions, so they are reachable independently of this set.
 INTERIM_ALLOWED_PERMISSIONS: frozenset[Permission] = frozenset(
-    {Permission.STATS_READ, Permission.REPORTS_READ}
+    {Permission.STATS_READ, Permission.REPORTS_READ, Permission.REVIEW_JOBS_WRITE}
 )
 
 
