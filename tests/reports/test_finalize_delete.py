@@ -84,3 +84,18 @@ async def test_delete_missing_rejected():
     )
     with pytest.raises(ReportNotFoundError):
         await uc.execute(report_id="nope")
+
+
+@pytest.mark.asyncio
+async def test_delete_amended_removes_doc_without_touching_articles():
+    # Article now belongs to a NEW report; deleting the amended one must NOT unlock it.
+    art = make_article(status=ArticleStatus.APPROVED, aid="art_1")
+    art.report_id = "rpt_new"
+    arts = FakeArticleRepo([art])
+    storage = InMemoryObjectStorage()
+    await storage.put("reports/2026-06/rpt_1.docx", b"x", content_type="application/x")
+    repo = FakeAcceptanceReportRepo([_report(status=ReportStatus.AMENDED)])
+    uc = DeleteReportUseCase(report_repo=repo, article_repo=arts, storage=storage)
+    await uc.execute(report_id="rpt_1")
+    assert art.report_id == "rpt_new"  # untouched
+    assert await repo.get_by_id("rpt_1") is None

@@ -19,11 +19,15 @@ class DeleteReportUseCase(LoggerMixin):
         report = await self.report_repo.get_by_id(report_id)
         if report is None:
             raise ReportNotFoundError()
-        if report.status != ReportStatus.DRAFT:
-            raise ReportStateConflictError("Only a draft report can be deleted")
+        if report.status not in (ReportStatus.DRAFT, ReportStatus.AMENDED):
+            raise ReportStateConflictError("Only a draft or amended report can be deleted")
 
-        for li in report.line_items:
-            await self.article_repo.set_report_id(li.article_id, None)
+        # Only drafts own their articles' lock. An amended report's articles were
+        # already unlocked at cancel time and may now belong to a new report, so
+        # leave their report_id untouched.
+        if report.status == ReportStatus.DRAFT:
+            for li in report.line_items:
+                await self.article_repo.set_report_id(li.article_id, None)
         try:
             await self.storage.delete(report.object_key)
         except Exception:  # noqa: BLE001 — object may already be gone
