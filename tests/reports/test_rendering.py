@@ -31,7 +31,7 @@ def _scalars() -> dict:
         "creator_tax_number": "TAX1",
         "creator_bank_account_number": "ACC1",
         "creator_bank": "Bank",
-        "creatir_bank_branch": "Branch",
+        "creator_bank_branch": "Branch",
         "total_approved_articles": "2",
         "total_articles": "2",
         "article_award_price": "500000",
@@ -44,10 +44,18 @@ def _scalars() -> dict:
 
 def _items() -> list[dict]:
     return [
-        {"article_platform": "tiktok", "article_id_autoinc": "1",
-         "article_on_air": "2026-06-01", "article_link": "https://tt/1", "article_view": "100"},
-        {"article_platform": "threads", "article_id_autoinc": "2",
-         "article_on_air": "2026-06-02", "article_link": "https://th/2", "article_view": "200"},
+        {
+            "article_id": "art_1",
+            "article_platform": "tiktok", "article_id_autoinc": "1",
+            "article_on_air": "2026-06-01", "article_link": "https://tt/1",
+            "article_view": "100", "article_image": "", "article_bonus_money": "  ",
+        },
+        {
+            "article_id": "art_2",
+            "article_platform": "threads", "article_id_autoinc": "2",
+            "article_on_air": "2026-06-02", "article_link": "https://th/2",
+            "article_view": "200", "article_image": "", "article_bonus_money": "  ",
+        },
     ]
 
 

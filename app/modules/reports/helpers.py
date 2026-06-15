@@ -37,8 +37,8 @@ def _dmy(value: str) -> str:
 
 def report_to_render_inputs(report: AcceptanceReport) -> tuple[dict, list[dict]]:
     """Map the report model to the template's scalar tokens + Điều 2 row dicts.
-    Keys are the EXACT template token names (incl. the `creatir_bank_branch`
-    typo). current_address falls back to primary_address when blank."""
+    Keys are the EXACT template token names. current_address falls back to
+    primary_address when blank."""
     s = report.creator_snapshot
     primary = s.get("primary_address", "") or ""
     scalars = {
@@ -53,7 +53,7 @@ def report_to_render_inputs(report: AcceptanceReport) -> tuple[dict, list[dict]]
         "creator_tax_number": s.get("tax_number", "") or "",
         "creator_bank_account_number": s.get("bank_account_number", "") or "",
         "creator_bank": s.get("bank_name", "") or "",
-        "creatir_bank_branch": s.get("bank_branch", "") or "",
+        "creator_bank_branch": s.get("bank_branch", "") or "",
         "total_approved_articles": str(report.total_approved_articles),
         "total_articles": str(report.total_approved_articles),
         "article_award_price": _vnd(report.article_award_price),
@@ -64,11 +64,14 @@ def report_to_render_inputs(report: AcceptanceReport) -> tuple[dict, list[dict]]
     }
     line_items = [
         {
+            "article_id": li.article_id,
             "article_platform": li.platform or "",
             "article_id_autoinc": str(li.seq),
             "article_on_air": li.on_air_date,
             "article_link": li.link or "",
             "article_view": "" if li.views is None else str(li.views),
+            "article_image": li.article_image or "",
+            "article_bonus_money": li.article_bonus_money or "  ",
         }
         for li in report.line_items
     ]

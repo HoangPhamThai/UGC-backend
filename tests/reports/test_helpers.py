@@ -49,7 +49,7 @@ def test_render_inputs_map_snapshot_and_financials():
     scalars, items = report_to_render_inputs(_report())
     assert scalars["creator_name"] == "Nguyen Van A"
     assert scalars["creator_bank"] == "ACB"
-    assert scalars["creatir_bank_branch"] == "HCM"  # template typo token
+    assert scalars["creator_bank_branch"] == "HCM"  # fixed typo token
     assert scalars["creator_current_address"] == "Addr 1"  # falls back to primary when blank
     assert scalars["final_award_verbal"] == "Bốn trăm năm mươi nghìn"
     assert scalars["total_award"] == "500.000"  # VN dot thousands
@@ -87,3 +87,43 @@ def test_render_inputs_total_articles_equals_approved_count():
     # total_articles = số bài đã duyệt dùng để tạo báo cáo (bằng total_approved_articles)
     assert scalars["total_articles"] == "1"
     assert scalars["total_articles"] == scalars["total_approved_articles"]
+
+
+from app.modules.reports.helpers import report_to_render_inputs
+
+
+def test_bank_branch_key_has_correct_spelling():
+    from tests.reports.test_model import _report
+    scalars, _ = report_to_render_inputs(_report())
+    assert "creator_bank_branch" in scalars
+    assert "creatir_bank_branch" not in scalars
+
+
+def test_line_items_include_article_id_for_image_lookup():
+    from tests.reports.test_model import _report
+    _, items = report_to_render_inputs(_report())
+    assert "article_id" in items[0]
+    assert items[0]["article_id"] == "art_1"
+
+
+def test_line_items_include_article_image_empty_when_none():
+    from tests.reports.test_model import _report
+    _, items = report_to_render_inputs(_report())
+    assert items[0]["article_image"] == ""
+
+
+def test_line_items_include_article_image_key_when_set():
+    from tests.reports.test_model import _report
+    from app.modules.reports.data.model import LineItem
+    li = LineItem(
+        article_id="art_1", seq=1, on_air_date="2026-06-01",
+        article_image="reports/2026-06/rpt_1/images/art_1.jpg",
+    )
+    _, items = report_to_render_inputs(_report(line_items=[li]))
+    assert items[0]["article_image"] == "reports/2026-06/rpt_1/images/art_1.jpg"
+
+
+def test_line_items_include_article_bonus_money():
+    from tests.reports.test_model import _report
+    _, items = report_to_render_inputs(_report())
+    assert items[0]["article_bonus_money"] == "  "
