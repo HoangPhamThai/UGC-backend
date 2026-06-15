@@ -24,7 +24,9 @@ class ListReportsUseCase(LoggerMixin):
         creator_user_id: Optional[str],
     ) -> list[ReportWithEmail]:
         reports = await self.report_repo.list(
-            period=period, status=status, creator_user_id=creator_user_id
+            period=period,
+            statuses=[status] if status is not None else None,
+            creator_user_id=creator_user_id,
         )
         reports.sort(key=lambda r: r.created_at, reverse=True)  # newest first
         emails = await self.source_repo.creator_emails(
@@ -39,7 +41,9 @@ class ListMyReportsUseCase(LoggerMixin):
 
     async def execute(self, *, creator_user_id: str) -> list[AcceptanceReport]:
         reports = await self.report_repo.list(
-            period=None, status=ReportStatus.FINAL, creator_user_id=creator_user_id
+            period=None,
+            statuses=[ReportStatus.FINAL, ReportStatus.AMENDED],
+            creator_user_id=creator_user_id,
         )
         reports.sort(key=lambda r: r.created_at, reverse=True)  # newest first
         return reports

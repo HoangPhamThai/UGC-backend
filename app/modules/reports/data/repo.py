@@ -123,15 +123,15 @@ class AcceptanceReportDataRepository(LoggerMixin, AcceptanceReportRepo):
         self,
         *,
         period: Optional[str],
-        status: Optional[ReportStatus],
+        statuses: Optional[list[ReportStatus]],
         creator_user_id: Optional[str],
     ) -> list[AcceptanceReport]:
         coll = await self._get_collection()
         filt: dict = {}
         if period is not None:
             filt["period"] = period
-        if status is not None:
-            filt["status"] = status.value
+        if statuses is not None:
+            filt["status"] = {"$in": [s.value for s in statuses]}
         if creator_user_id is not None:
             filt["creator_user_id"] = creator_user_id
         cursor = coll.find(filt)  # ordering is the use-case's responsibility

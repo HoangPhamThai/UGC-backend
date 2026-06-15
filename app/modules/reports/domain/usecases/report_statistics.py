@@ -22,7 +22,7 @@ class ReportStatisticsUseCase(LoggerMixin):
 
     async def execute(self, *, period: Optional[str] = None) -> ReportStatistics:
         reports = await self.report_repo.list(
-            period=period, status=None, creator_user_id=None
+            period=period, statuses=None, creator_user_id=None
         )
         drafts = [r for r in reports if r.status == ReportStatus.DRAFT]
         finals = [r for r in reports if r.status == ReportStatus.FINAL]

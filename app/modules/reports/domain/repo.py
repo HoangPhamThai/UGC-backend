@@ -75,7 +75,7 @@ class AcceptanceReportRepo(ABC):
         self,
         *,
         period: Optional[str],
-        status: Optional[ReportStatus],
+        statuses: Optional[list[ReportStatus]],
         creator_user_id: Optional[str],
     ) -> list[AcceptanceReport]: ...
 

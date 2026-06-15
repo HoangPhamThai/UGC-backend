@@ -41,12 +41,12 @@ class FakeAcceptanceReportRepo(AcceptanceReportRepo):
             None,
         )
 
-    async def list(self, *, period, status, creator_user_id):
+    async def list(self, *, period, statuses, creator_user_id):
         out = list(self.items.values())
         if period is not None:
             out = [r for r in out if r.period == period]
-        if status is not None:
-            out = [r for r in out if r.status == status]
+        if statuses is not None:
+            out = [r for r in out if r.status in statuses]
         if creator_user_id is not None:
             out = [r for r in out if r.creator_user_id == creator_user_id]
         return out
