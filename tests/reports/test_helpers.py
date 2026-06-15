@@ -80,3 +80,10 @@ def test_render_inputs_pass_through_unparseable_or_empty_dates():
     scalars, _ = report_to_render_inputs(_report_with_dates("", "15/03/2015"))
     assert scalars["creator_date_of_birth"] == ""          # empty stays empty
     assert scalars["creator_social_id_date_of_issue"] == "15/03/2015"  # already-dmy / non-ISO passes through
+
+
+def test_render_inputs_total_articles_equals_approved_count():
+    scalars, _ = report_to_render_inputs(_report())
+    # total_articles = số bài đã duyệt dùng để tạo báo cáo (bằng total_approved_articles)
+    assert scalars["total_articles"] == "1"
+    assert scalars["total_articles"] == scalars["total_approved_articles"]

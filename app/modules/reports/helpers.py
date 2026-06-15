@@ -55,6 +55,7 @@ def report_to_render_inputs(report: AcceptanceReport) -> tuple[dict, list[dict]]
         "creator_bank": s.get("bank_name", "") or "",
         "creatir_bank_branch": s.get("bank_branch", "") or "",
         "total_approved_articles": str(report.total_approved_articles),
+        "total_articles": str(report.total_approved_articles),
         "article_award_price": _vnd(report.article_award_price),
         "total_award": _vnd(report.total_award),
         "tax": _vnd(report.tax),
