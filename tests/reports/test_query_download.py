@@ -56,7 +56,10 @@ async def test_admin_download_any():
     storage = InMemoryObjectStorage()
     await storage.put("reports/2026-06/rpt_1.docx", b"BYTES", content_type="application/x")
     repo = FakeAcceptanceReportRepo([_r("rpt_1", "u_a", ReportStatus.DRAFT)])
-    uc = DownloadReportUseCase(report_repo=repo, storage=storage)
+    uc = DownloadReportUseCase(
+        report_repo=repo, storage=storage,
+        source_repo=FakeReportSourceRepo(emails={"u_a": "a@example.com"}),
+    )
     filename, data = await uc.execute(report_id="rpt_1", require_creator_id=None)
     assert data == b"BYTES" and filename.endswith(".docx")
 
@@ -69,7 +72,10 @@ async def test_creator_download_blocked_for_draft_or_other():
         _r("rpt_1", "u_a", ReportStatus.DRAFT),
         _r("rpt_2", "u_b", ReportStatus.FINAL),
     ])
-    uc = DownloadReportUseCase(report_repo=repo, storage=storage)
+    uc = DownloadReportUseCase(
+        report_repo=repo, storage=storage,
+        source_repo=FakeReportSourceRepo(emails={}),
+    )
     with pytest.raises(ReportNotFoundError):
         await uc.execute(report_id="rpt_1", require_creator_id="u_a")
     with pytest.raises(ReportNotFoundError):
@@ -81,9 +87,41 @@ async def test_creator_download_own_final_ok():
     storage = InMemoryObjectStorage()
     await storage.put("reports/2026-06/rpt_1.docx", b"OK", content_type="application/x")
     repo = FakeAcceptanceReportRepo([_r("rpt_1", "u_a", ReportStatus.FINAL)])
-    uc = DownloadReportUseCase(report_repo=repo, storage=storage)
+    uc = DownloadReportUseCase(
+        report_repo=repo, storage=storage,
+        source_repo=FakeReportSourceRepo(emails={}),
+    )
     _, data = await uc.execute(report_id="rpt_1", require_creator_id="u_a")
     assert data == b"OK"
+
+
+@pytest.mark.asyncio
+async def test_download_filename_uses_email_local_part_and_period():
+    # report with period 2026-06 for creator u_creator whose email is abc@example.com
+    storage = InMemoryObjectStorage()
+    await storage.put("reports/2026-06/rpt_1.docx", b"DATA", content_type="application/x")
+    repo = FakeAcceptanceReportRepo([_r("rpt_1", "u_creator", ReportStatus.DRAFT)])
+    uc = DownloadReportUseCase(
+        report_repo=repo,
+        storage=storage,
+        source_repo=FakeReportSourceRepo(emails={"u_creator": "abc@example.com"}),
+    )
+    filename, _ = await uc.execute(report_id="rpt_1", require_creator_id=None)
+    assert filename == "abc_report_6_2026.docx"
+
+
+@pytest.mark.asyncio
+async def test_download_filename_falls_back_to_creator_id_when_no_email():
+    storage = InMemoryObjectStorage()
+    await storage.put("reports/2026-06/rpt_1.docx", b"DATA", content_type="application/x")
+    repo = FakeAcceptanceReportRepo([_r("rpt_1", "u_creator", ReportStatus.DRAFT)])
+    uc = DownloadReportUseCase(
+        report_repo=repo,
+        storage=storage,
+        source_repo=FakeReportSourceRepo(emails={}),  # no email
+    )
+    filename, _ = await uc.execute(report_id="rpt_1", require_creator_id=None)
+    assert filename == "u_creator_report_6_2026.docx"
 
 
 def _report(rid: str, creator: str, created_at: datetime) -> AcceptanceReport:

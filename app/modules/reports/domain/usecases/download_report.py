@@ -5,7 +5,7 @@ from typing import Optional
 from app.core.logging_mixin import LoggerMixin
 from app.modules.reports.data.model import ReportStatus
 from app.modules.reports.domain.errors import ReportNotFoundError
-from app.modules.reports.domain.repo import AcceptanceReportRepo
+from app.modules.reports.domain.repo import AcceptanceReportRepo, ReportSourceRepo
 from app.modules.reports.storage import ObjectStorage
 
 
@@ -13,6 +13,7 @@ from app.modules.reports.storage import ObjectStorage
 class DownloadReportUseCase(LoggerMixin):
     report_repo: AcceptanceReportRepo
     storage: ObjectStorage
+    source_repo: ReportSourceRepo
 
     async def execute(
         self, *, report_id: str, require_creator_id: Optional[str]
@@ -31,5 +32,9 @@ class DownloadReportUseCase(LoggerMixin):
                 raise ReportNotFoundError()
 
         data = await self.storage.get(report.object_key)
-        filename = f"bien-ban-nghiem-thu-{report.period}-{report.id}.docx"
+        emails = await self.source_repo.creator_emails({report.creator_user_id})
+        email = emails.get(report.creator_user_id)
+        local = email.split("@")[0] if email else report.creator_user_id
+        year, month_str = report.period.split("-")
+        filename = f"{local}_report_{int(month_str)}_{year}.docx"
         return filename, data

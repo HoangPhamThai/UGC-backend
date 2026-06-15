@@ -62,3 +62,21 @@ def test_render_inputs_map_snapshot_and_financials():
 
 def test_docx_mime_constant():
     assert DOCX_MIME.endswith("wordprocessingml.document")
+
+
+def _report_with_dates(dob: str, doi: str) -> AcceptanceReport:
+    r = _report()
+    r.creator_snapshot = {**r.creator_snapshot, "date_of_birth": dob, "social_id_date_of_issue": doi}
+    return r
+
+
+def test_render_inputs_format_dob_and_issue_date_as_dmy():
+    scalars, _ = report_to_render_inputs(_report_with_dates("1990-01-15", "2015-03-02"))
+    assert scalars["creator_date_of_birth"] == "15/01/1990"
+    assert scalars["creator_social_id_date_of_issue"] == "02/03/2015"
+
+
+def test_render_inputs_pass_through_unparseable_or_empty_dates():
+    scalars, _ = report_to_render_inputs(_report_with_dates("", "15/03/2015"))
+    assert scalars["creator_date_of_birth"] == ""          # empty stays empty
+    assert scalars["creator_social_id_date_of_issue"] == "15/03/2015"  # already-dmy / non-ISO passes through
