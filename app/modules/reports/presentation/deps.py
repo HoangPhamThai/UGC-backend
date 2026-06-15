@@ -24,6 +24,7 @@ from app.modules.reports.storage import ObjectStorage, get_object_storage
 from app.modules.reports.domain.usecases.recheck_link_metrics import (
     RecheckLinkMetricsUseCase,
 )
+from app.modules.reports.domain.usecases.regenerate_report import RegenerateReportUseCase
 from app.modules.reports.domain.usecases.template import (
     DownloadTemplateUseCase,
     GetTemplateUseCase,
@@ -91,6 +92,14 @@ def get_uc_finalize_report() -> FinalizeReportUseCase:
 def get_uc_delete_report() -> DeleteReportUseCase:
     return DeleteReportUseCase(
         report_repo=get_report_repo(), article_repo=get_article_repo(), storage=_storage()
+    )
+
+
+def get_uc_regenerate_report() -> RegenerateReportUseCase:
+    return RegenerateReportUseCase(
+        report_repo=get_report_repo(),
+        delete_uc=get_uc_delete_report(),
+        generate_uc=get_uc_generate_reports(),
     )
 
 
