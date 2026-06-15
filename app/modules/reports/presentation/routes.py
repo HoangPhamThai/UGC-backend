@@ -20,6 +20,7 @@ from app.modules.reports.presentation.deps import (
     get_uc_list_my_reports,
     get_uc_list_reports,
     get_uc_recheck_link_metrics,
+    get_uc_regenerate_report,
     get_uc_report_statistics,
     get_uc_upload_template,
 )
@@ -157,6 +158,16 @@ async def finalize_report(
 ):
     report = await uc.execute(report_id=report_id, finalized_by=current_user.id)
     return create_success_response(ReportResponse.from_model(report), "Report finalized")
+
+
+@router.post("/reports/{report_id}/regenerate", response_model=StandardResponse[ReportResponse])
+async def regenerate_report(
+    report_id: str = Path(...),
+    current_user: User = Depends(require_permissions(Permission.REPORTS_MANAGE)),
+    uc=Depends(get_uc_regenerate_report),
+):
+    report = await uc.execute(report_id=report_id, regenerated_by=current_user.id)
+    return create_success_response(ReportResponse.from_model(report), "Report regenerated")
 
 
 @router.delete("/reports/{report_id}", response_model=StandardResponse)
