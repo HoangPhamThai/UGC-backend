@@ -24,6 +24,17 @@ def _vnd(n: int) -> str:
     return f"{n:,}".replace(",", ".")
 
 
+def _dmy(value: str) -> str:
+    """Format an ISO 'YYYY-MM-DD' date string as 'DD/MM/YYYY'. Non-ISO or empty
+    values are returned unchanged (these are user-entered display fields)."""
+    if not value:
+        return value
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").strftime("%d/%m/%Y")
+    except ValueError:
+        return value
+
+
 def report_to_render_inputs(report: AcceptanceReport) -> tuple[dict, list[dict]]:
     """Map the report model to the template's scalar tokens + Điều 2 row dicts.
     Keys are the EXACT template token names (incl. the `creatir_bank_branch`
@@ -33,9 +44,9 @@ def report_to_render_inputs(report: AcceptanceReport) -> tuple[dict, list[dict]]
     scalars = {
         "created_at": report.created_at.strftime("%d/%m/%Y"),
         "creator_name": s.get("full_name", "") or "",
-        "creator_date_of_birth": s.get("date_of_birth", "") or "",
+        "creator_date_of_birth": _dmy(s.get("date_of_birth", "") or ""),
         "creator_social_id": s.get("social_id", "") or "",
-        "creator_social_id_date_of_issue": s.get("social_id_date_of_issue", "") or "",
+        "creator_social_id_date_of_issue": _dmy(s.get("social_id_date_of_issue", "") or ""),
         "creator_social_id_place_of_issue": s.get("social_id_place_of_issue", "") or "",
         "creator_primary_address": primary,
         "creator_current_address": (s.get("current_address") or primary),
