@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 from typing import Optional, override
 
-from pymongo import ASCENDING, ReturnDocument
+from pymongo import ASCENDING, DESCENDING, ReturnDocument
 from pymongo.asynchronous.collection import AsyncCollection
 
 from app.core.db import get_db
@@ -26,6 +26,13 @@ class ReviewJobDataRepository(LoggerMixin, ReviewJobRepo):
     async def ensure_indexes(self) -> None:
         coll = await self._get_collection()
         await coll.create_index([("owner_user_id", ASCENDING)])
+        await coll.create_index(
+            [
+                ("owner_user_id", ASCENDING),
+                ("article_id", ASCENDING),
+                ("created_at", DESCENDING),
+            ]
+        )
 
     @override
     async def create(self, job: ReviewJob) -> ReviewJob:
@@ -37,6 +44,15 @@ class ReviewJobDataRepository(LoggerMixin, ReviewJobRepo):
     async def get_by_id(self, job_id: str) -> Optional[ReviewJob]:
         coll = await self._get_collection()
         doc = await coll.find_one({"_id": job_id})
+        return ReviewJob.model_validate(doc) if doc else None
+
+    @override
+    async def get_latest_for_article(self, owner_user_id, article_id):
+        coll = await self._get_collection()
+        doc = await coll.find_one(
+            {"owner_user_id": owner_user_id, "article_id": article_id},
+            sort=[("created_at", DESCENDING)],
+        )
         return ReviewJob.model_validate(doc) if doc else None
 
     @override

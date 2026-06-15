@@ -1,9 +1,14 @@
+from datetime import datetime, timezone
+
 import pytest
 
 from app.modules.review_jobs.data.model import ReviewCard, ReviewJobStatus
 from app.modules.review_jobs.domain.errors import ReviewJobNotFoundError
 from app.modules.review_jobs.domain.usecases.create_job import CreateReviewJobUseCase
 from app.modules.review_jobs.domain.usecases.get_job import GetReviewJobUseCase
+from app.modules.review_jobs.domain.usecases.get_latest_job import (
+    GetLatestReviewJobUseCase,
+)
 from app.modules.review_jobs.domain.usecases.update_job import (
     AppendResultUseCase,
     FinalizeJobUseCase,
@@ -19,6 +24,41 @@ async def test_create_sets_owner_and_parsing_status():
     assert job.owner_user_id == "u_qc"
     assert job.status == ReviewJobStatus.PARSING
     assert repo.items[job.id] is job
+
+
+async def test_create_stores_rubrics():
+    repo = FakeReviewJobRepo()
+    uc = CreateReviewJobUseCase(repo=repo)
+    job = await uc.execute(
+        owner_user_id="u_qc", article_id="a_1", workspace_id="w_1", rubrics="be concise"
+    )
+    assert job.rubrics == "be concise"
+    assert repo.items[job.id].rubrics == "be concise"
+
+
+async def test_get_latest_returns_most_recent_for_caller_and_article():
+    older = make_review_job(jid="rj_old", owner_user_id="u_qc", article_id="a_1")
+    newer = make_review_job(jid="rj_new", owner_user_id="u_qc", article_id="a_1")
+    older.created_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    newer.created_at = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    repo = FakeReviewJobRepo([older, newer])
+    uc = GetLatestReviewJobUseCase(repo=repo)
+    job = await uc.execute(caller_id="u_qc", article_id="a_1")
+    assert job is not None and job.id == "rj_new"
+
+
+async def test_get_latest_returns_none_when_no_job():
+    repo = FakeReviewJobRepo()
+    uc = GetLatestReviewJobUseCase(repo=repo)
+    assert await uc.execute(caller_id="u_qc", article_id="a_1") is None
+
+
+async def test_get_latest_does_not_leak_other_owner_or_article():
+    other_owner = make_review_job(jid="rj_o", owner_user_id="u_other", article_id="a_1")
+    other_article = make_review_job(jid="rj_a", owner_user_id="u_qc", article_id="a_2")
+    repo = FakeReviewJobRepo([other_owner, other_article])
+    uc = GetLatestReviewJobUseCase(repo=repo)
+    assert await uc.execute(caller_id="u_qc", article_id="a_1") is None
 
 
 async def test_set_total_flips_to_evaluating():

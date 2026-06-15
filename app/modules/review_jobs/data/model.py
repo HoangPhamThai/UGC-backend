@@ -25,6 +25,7 @@ class ReviewJob(BaseMongoModel):
     id: str = Field(default_factory=lambda: make_prefixed_id("rj"), alias="_id")
     article_id: str
     workspace_id: str
+    rubrics: str = ""
     owner_user_id: str
     status: ReviewJobStatus = ReviewJobStatus.PARSING
     total: Optional[int] = None

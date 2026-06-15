@@ -1,8 +1,11 @@
+from datetime import datetime, timezone
+
 import httpx
 import pytest
 
 from app.app import app
 from app.core.auth import get_current_principal
+from app.modules.review_jobs.data.model import ReviewCard, ReviewJobStatus
 from app.modules.review_jobs.presentation import deps
 from tests.conftest import FakeReviewJobRepo, make_review_job, make_user
 
@@ -47,3 +50,28 @@ async def test_get_job_nonowner_404(repo):
     res = await _get("/api/v1/review-jobs/rj_1")
     assert res.status_code == 404
     assert res.json()["success"] is False
+
+
+async def test_get_latest_returns_job_data(repo):
+    job = make_review_job(jid="rj_latest", owner_user_id="u_qc", article_id="a_1")
+    job.created_at = datetime(2026, 12, 31, tzinfo=timezone.utc)
+    job.rubrics = "be concise"
+    job.status = ReviewJobStatus.DONE
+    job.total = 1
+    job.results = [ReviewCard(kind="text-rubric", source="R1", finding="x")]
+    await repo.create(job)
+    res = await _get("/api/v1/review-jobs/latest?workspace_id=w_1&article_id=a_1")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["success"] is True
+    assert body["data"]["rubrics"] == "be concise"
+    assert body["data"]["status"] == "done"
+    assert [c["finding"] for c in body["data"]["results"]] == ["x"]
+
+
+async def test_get_latest_returns_null_when_none(repo):
+    res = await _get("/api/v1/review-jobs/latest?workspace_id=w_1&article_id=a_nope")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["success"] is True
+    assert body["data"] is None

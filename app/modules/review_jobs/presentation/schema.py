@@ -9,6 +9,7 @@ from app.modules.review_jobs.data.model import ReviewCard, ReviewJob
 class CreateReviewJobRequest(BaseModel):
     article_id: str = Field(..., min_length=1)
     workspace_id: str = Field(..., min_length=1)
+    rubrics: str = ""
 
 
 class UpdateReviewJobRequest(BaseModel):
@@ -40,6 +41,7 @@ class ReviewJobResponse(BaseModel):
     completed: int
     total: Optional[int]
     results: list[ReviewCardResponse]
+    rubrics: str
     error: Optional[str] = None
 
     @classmethod
@@ -52,5 +54,6 @@ class ReviewJobResponse(BaseModel):
             completed=completed,
             total=job.total,
             results=[ReviewCardResponse.from_card(c) for c in job.results],
+            rubrics=job.rubrics,
             error=job.error,
         )

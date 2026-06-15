@@ -17,6 +17,13 @@ class ReviewJobRepo(ABC):
     async def get_by_id(self, job_id: str) -> Optional[ReviewJob]: ...
 
     @abstractmethod
+    async def get_latest_for_article(
+        self, owner_user_id: str, article_id: str
+    ) -> Optional[ReviewJob]:
+        """Most recently created job for (owner, article), or None."""
+        ...
+
+    @abstractmethod
     async def set_total(self, job_id: str, total: int) -> Optional[ReviewJob]:
         """Set total and flip status to EVALUATING; bump updated_at."""
         ...

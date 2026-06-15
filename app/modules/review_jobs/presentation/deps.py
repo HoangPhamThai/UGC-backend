@@ -5,6 +5,9 @@ from app.modules.review_jobs.data.repo import ReviewJobDataRepository
 from app.modules.review_jobs.domain.repo import ReviewJobRepo
 from app.modules.review_jobs.domain.usecases.create_job import CreateReviewJobUseCase
 from app.modules.review_jobs.domain.usecases.get_job import GetReviewJobUseCase
+from app.modules.review_jobs.domain.usecases.get_latest_job import (
+    GetLatestReviewJobUseCase,
+)
 from app.modules.review_jobs.domain.usecases.update_job import (
     AppendResultUseCase,
     FinalizeJobUseCase,
@@ -22,6 +25,10 @@ def get_uc_create_job(repo: ReviewJobRepo = Depends(get_review_job_repo)) -> Cre
 
 def get_uc_get_job(repo: ReviewJobRepo = Depends(get_review_job_repo)) -> GetReviewJobUseCase:
     return GetReviewJobUseCase(repo=repo)
+
+
+def get_uc_get_latest_job(repo: ReviewJobRepo = Depends(get_review_job_repo)) -> GetLatestReviewJobUseCase:
+    return GetLatestReviewJobUseCase(repo=repo)
 
 
 def get_uc_set_total(repo: ReviewJobRepo = Depends(get_review_job_repo)) -> SetTotalUseCase:

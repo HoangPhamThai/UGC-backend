@@ -18,6 +18,14 @@ def test_response_progress_and_completed_from_results():
     assert [c.finding for c in resp.results] == ["a", "b"]
 
 
+def test_response_includes_rubrics():
+    job = ReviewJob(
+        article_id="a_1", workspace_id="w_1", owner_user_id="u_qc", rubrics="rubric text"
+    )
+    resp = ReviewJobResponse.from_job(job)
+    assert resp.rubrics == "rubric text"
+
+
 def test_response_progress_when_total_unknown():
     job = ReviewJob(article_id="a_1", workspace_id="w_1", owner_user_id="u_qc")
     resp = ReviewJobResponse.from_job(job)

@@ -588,6 +588,16 @@ class FakeReviewJobRepo(ReviewJobRepo):
     async def get_by_id(self, job_id: str) -> Optional[ReviewJob]:
         return self.items.get(job_id)
 
+    async def get_latest_for_article(
+        self, owner_user_id: str, article_id: str
+    ) -> Optional[ReviewJob]:
+        matches = [
+            j
+            for j in self.items.values()
+            if j.owner_user_id == owner_user_id and j.article_id == article_id
+        ]
+        return max(matches, key=lambda j: j.created_at, default=None)
+
     async def set_total(self, job_id: str, total: int) -> Optional[ReviewJob]:
         job = self.items.get(job_id)
         if job is None:
