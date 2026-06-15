@@ -1,9 +1,10 @@
 # app/modules/workspaces/domain/usecases/submit_article_link.py
 from dataclasses import dataclass
+from typing import Optional
 
 from app.core.logging_mixin import LoggerMixin
 from app.modules.users.data.model import User
-from app.modules.workspaces.data.model import Article, ArticleStatus, MAX_LINK_EDITS
+from app.modules.workspaces.data.model import Article, ArticleStatus, MAX_LINK_EDITS, PostMetrics
 from app.modules.workspaces.domain.errors import (
     ArticleNotFoundError,
     ArticleStateConflictError,
@@ -27,7 +28,13 @@ class SubmitArticleLinkUseCase(LoggerMixin):
     article_repo: ArticleRepo
 
     async def execute(
-        self, *, workspace_id: str, article_id: str, caller: User, link: str
+        self,
+        *,
+        workspace_id: str,
+        article_id: str,
+        caller: User,
+        link: str,
+        metrics: Optional[PostMetrics] = None,
     ) -> Article:
         trimmed = (link or "").strip()
         if not trimmed:
@@ -61,9 +68,14 @@ class SubmitArticleLinkUseCase(LoggerMixin):
         else:
             new_count = article.link_edit_count + 1
 
-        updated = await self.article_repo.set_link(
-            article_id, link=trimmed, link_edit_count=new_count
-        )
+        if metrics is not None:
+            updated = await self.article_repo.set_link_with_metrics(
+                article_id, link=trimmed, metrics=metrics, link_edit_count=new_count
+            )
+        else:
+            updated = await self.article_repo.set_link(
+                article_id, link=trimmed, link_edit_count=new_count
+            )
         if updated is None:
             raise ArticleNotFoundError()
         self.log_info(

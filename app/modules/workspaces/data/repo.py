@@ -303,6 +303,31 @@ class ArticleDataRepository(LoggerMixin, ArticleRepo):
         return Article.model_validate(doc) if doc else None
 
     @override
+    async def set_link_with_metrics(
+        self, article_id: str, *, link: str, metrics: PostMetrics, link_edit_count: int
+    ) -> Optional[Article]:
+        coll = await self._get_collection()
+        now = datetime.now(timezone.utc)
+        doc = await coll.find_one_and_update(
+            {"_id": article_id},
+            {
+                "$set": {
+                    "link": link,
+                    "link_submitted_at": now,
+                    "link_edit_count": link_edit_count,
+                    "updated_at": now,
+                    "metrics": metrics.model_dump(),
+                    "extraction_status": ExtractionStatus.EXTRACTED.value,
+                    "extracted_at": now,
+                    "extraction_error": None,
+                    "extraction_attempts": 0,
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return Article.model_validate(doc) if doc else None
+
+    @override
     async def set_report_id(
         self, article_id: str, report_id: Optional[str]
     ) -> Optional[Article]:

@@ -134,6 +134,20 @@ class FakeArticleRepo(ArticleRepo):
         a.metrics = None
         return a
 
+    async def set_link_with_metrics(self, article_id, *, link, metrics, link_edit_count):
+        a = self.items.get(article_id)
+        if a is None:
+            return None
+        a.link = link
+        a.link_submitted_at = _now()
+        a.link_edit_count = link_edit_count
+        a.metrics = metrics
+        a.extraction_status = ExtractionStatus.EXTRACTED
+        a.extracted_at = _now()
+        a.extraction_error = None
+        a.extraction_attempts = 0
+        return a
+
     async def set_report_id(self, article_id, report_id):
         a = self.items.get(article_id)
         if a is None:

@@ -6,7 +6,7 @@ from app.core.model import StandardResponse, create_success_response
 from app.core.permissions import Permission, require_permissions
 from app.modules.profiles.presentation.gate import require_profile_complete
 from app.modules.users.data.model import User
-from app.modules.workspaces.data.model import ExtractionStatus, FeedbackAnchor
+from app.modules.workspaces.data.model import ExtractionStatus, FeedbackAnchor, PostMetrics
 from app.modules.workspaces.extraction.deps import run_extraction_task
 from app.modules.workspaces.presentation.deps import (
     get_uc_add_reply,
@@ -227,11 +227,22 @@ async def submit_article_link(
     current_user: User = Depends(require_permissions(Permission.ARTICLES_UPDATE)),
     uc=Depends(get_uc_submit_article_link),
 ):
+    manual = (
+        PostMetrics(
+            views=body.metrics.views,
+            favorites=body.metrics.favorites,
+            comments=body.metrics.comments,
+            shares=body.metrics.shares,
+        )
+        if body.metrics is not None
+        else None
+    )
     article = await uc.execute(
         workspace_id=workspace_id,
         article_id=article_id,
         caller=current_user,
         link=body.link,
+        metrics=manual,
     )
     if article.extraction_status == ExtractionStatus.PENDING and article.link:
         background_tasks.add_task(run_extraction_task, article.id, article.link)

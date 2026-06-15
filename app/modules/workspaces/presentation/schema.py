@@ -54,8 +54,16 @@ class UpdateArticleRequest(BaseModel):
         return self
 
 
+class ManualMetricsRequest(BaseModel):
+    views: Optional[int] = Field(default=None, ge=0)
+    favorites: Optional[int] = Field(default=None, ge=0)
+    comments: Optional[int] = Field(default=None, ge=0)
+    shares: Optional[int] = Field(default=None, ge=0)
+
+
 class SubmitArticleLinkRequest(BaseModel):
     link: str = Field(..., min_length=1, max_length=2000)
+    metrics: Optional[ManualMetricsRequest] = Field(default=None)
 
 
 # --- Responses ---

@@ -113,6 +113,14 @@ class ArticleRepo(ABC):
         ...
 
     @abstractmethod
+    async def set_link_with_metrics(
+        self, article_id: str, *, link: str, metrics: "PostMetrics", link_edit_count: int
+    ) -> Optional[Article]:
+        """Set link + manually-provided metrics in one write: status=extracted,
+        extracted_at=now, error cleared. Bypasses the scraping pipeline."""
+        ...
+
+    @abstractmethod
     async def set_report_id(
         self, article_id: str, report_id: Optional[str]
     ) -> Optional[Article]:
