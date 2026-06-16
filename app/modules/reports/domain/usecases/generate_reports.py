@@ -6,6 +6,8 @@ from app.core.logging_mixin import LoggerMixin
 from app.modules.profiles.domain.repo import CreatorProfileRepo
 from app.modules.reports.data.model import AcceptanceReport, LineItem
 from app.modules.reports.domain.errors import ReportValidationError
+from app.modules.email.messages import ReportEmailEvent
+from app.modules.email.service import EmailService
 from app.modules.reports.domain.repo import AcceptanceReportRepo, ReportRulesRepo, ReportSourceRepo, TemplateRepo
 from app.modules.reports.helpers import DOCX_MIME, _vnd, period_bounds, report_to_render_inputs
 from app.modules.reports.numbers import number_to_vietnamese
@@ -31,6 +33,7 @@ class GenerateReportsUseCase(LoggerMixin):
     render: Callable[..., bytes]  # render_acceptance_report(*, scalars, line_items, template_bytes)
     template_repo: TemplateRepo
     rules_repo: Optional[ReportRulesRepo] = None
+    email_service: Optional[EmailService] = None
 
     async def execute(
         self,
@@ -137,5 +140,11 @@ class GenerateReportsUseCase(LoggerMixin):
                 await self.article_repo.set_report_id(a.article_id, report.id)
 
             created.append(report)
+            if self.email_service is not None:
+                self.email_service.schedule_report_event(
+                    event=ReportEmailEvent.CREATED,
+                    period=period,
+                    creator_user_id=owner_id,
+                )
             self.log_info(f"Report drafted: id={report.id} creator={owner_id} n={count}")
         return created

@@ -7,12 +7,12 @@ from app.modules.reports.storage import InMemoryObjectStorage
 from app.modules.workspaces.data.model import ArticleStatus
 from tests.conftest import FakeArticleRepo, make_article
 from tests.profiles.test_usecases import FakeProfileRepo
-from tests.reports.fakes import FakeAcceptanceReportRepo, FakeReportSourceRepo, FakeTemplateRepo, make_eligible
+from tests.reports.fakes import FakeAcceptanceReportRepo, FakeReportSourceRepo, FakeTemplateRepo, make_eligible, RecordingEmailService
 
 ALL_REQUIRED = {f: "x" for f in REQUIRED_PROFILE_FIELDS}
 
 
-def _uc(*, eligible, articles, reports=None, captured=None, active_template=None):
+def _uc(*, eligible, articles, reports=None, captured=None, active_template=None, email_service=None):
     storage = InMemoryObjectStorage()
 
     def fake_render(*, scalars, line_items, template_bytes=None):
@@ -29,6 +29,7 @@ def _uc(*, eligible, articles, reports=None, captured=None, active_template=None
             storage=storage,
             render=fake_render,
             template_repo=FakeTemplateRepo(active_template),
+            email_service=email_service,
         ),
         storage,
     )
@@ -106,3 +107,19 @@ async def test_generate_passes_active_template_bytes_to_render():
     )
     await uc.execute(period="2026-06", article_award_price=1, tax_rate=0.0, created_by="u_admin")
     assert captured and captured[0]["template_bytes"] == b"ACTIVE-TPL"
+
+
+@pytest.mark.asyncio
+async def test_generate_schedules_created_email_per_report():
+    from app.modules.email.messages import ReportEmailEvent
+    email = RecordingEmailService()
+    uc, _ = _uc(
+        eligible=[make_eligible("art_1", "u_a")],
+        articles=[make_article(status=ArticleStatus.APPROVED, aid="art_1", workspace_id="ws_1")],
+        email_service=email,
+    )
+    created = await uc.execute(
+        period="2026-06", article_award_price=500_000, tax_rate=0.05, created_by="u_admin",
+    )
+    assert len(created) == 1
+    assert email.report_events == [(ReportEmailEvent.CREATED, "2026-06", "u_a")]
