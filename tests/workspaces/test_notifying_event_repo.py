@@ -1,5 +1,7 @@
 import pytest
 
+from dataclasses import dataclass, field
+
 from app.modules.notifications.data.model import NotificationType
 from app.modules.workspaces.data.model import (
     Article, ArticleEvent, ArticleEventType, ArticleStatus, Workspace,
@@ -11,6 +13,24 @@ from tests.conftest import (
     FakeArticleEventRepo, FakeArticleRepo, FakeNotificationRepo, FakeWorkspaceRepo,
     make_article,
 )
+
+
+@dataclass
+class FakeEmailService:
+    calls: list[dict] = field(default_factory=list)
+
+    def schedule(self, *, event_type, article, creator_user_id: str) -> None:
+        self.calls.append(
+            {
+                "event_type": event_type,
+                "article_id": article.id,
+                "creator_user_id": creator_user_id,
+            }
+        )
+
+
+def _noop_email() -> FakeEmailService:
+    return FakeEmailService()
 
 
 def _article(claimed_by="u_qc"):
@@ -71,6 +91,7 @@ async def test_notifying_repo_persists_event_and_notification():
         inner=inner, notification_repo=notifs,
         article_repo=FakeArticleRepo([_article()]),
         workspace_repo=FakeWorkspaceRepo([Workspace(id="ws_1", name="W", owner_user_id="u_creator")]),
+        email_service=_noop_email(),
     )
     await repo.create(_event(ArticleEventType.APPROVED, "u_qc"))
     assert len(inner.events) == 1
@@ -86,6 +107,7 @@ async def test_notifying_repo_skips_non_notifying_event():
         inner=inner, notification_repo=notifs,
         article_repo=FakeArticleRepo([_article()]),
         workspace_repo=FakeWorkspaceRepo([Workspace(id="ws_1", name="W", owner_user_id="u_creator")]),
+        email_service=_noop_email(),
     )
     await repo.create(_event(ArticleEventType.CLAIMED, "u_qc"))
     assert len(inner.events) == 1 and len(notifs.items) == 0
@@ -106,6 +128,7 @@ async def test_notifying_repo_gracefully_skips_missing_article():
         inner=inner, notification_repo=notifs,
         article_repo=FakeArticleRepo([]),
         workspace_repo=FakeWorkspaceRepo([]),
+        email_service=_noop_email(),
     )
     await repo.create(_event(ArticleEventType.APPROVED, "u_qc"))
     assert len(inner.events) == 1 and len(notifs.items) == 0
@@ -118,6 +141,37 @@ async def test_notifying_repo_gracefully_skips_missing_workspace():
         inner=inner, notification_repo=notifs,
         article_repo=FakeArticleRepo([_article()]),
         workspace_repo=FakeWorkspaceRepo([]),
+        email_service=_noop_email(),
     )
     await repo.create(_event(ArticleEventType.APPROVED, "u_qc"))
     assert len(inner.events) == 1 and len(notifs.items) == 0
+
+
+async def test_notifying_repo_schedules_email_for_creator_events():
+    inner = FakeArticleEventRepo()
+    notifs = FakeNotificationRepo()
+    email_svc = FakeEmailService()
+    repo = NotifyingEventRepo(
+        inner=inner,
+        notification_repo=notifs,
+        article_repo=FakeArticleRepo([_article()]),
+        workspace_repo=FakeWorkspaceRepo([Workspace(id="ws_1", name="W", owner_user_id="u_creator")]),
+        email_service=email_svc,
+    )
+    await repo.create(_event(ArticleEventType.APPROVED, "u_qc"))
+    assert len(email_svc.calls) == 1
+    assert email_svc.calls[0]["creator_user_id"] == "u_creator"
+
+
+async def test_notifying_repo_does_not_schedule_email_for_reply():
+    inner = FakeArticleEventRepo()
+    email_svc = FakeEmailService()
+    repo = NotifyingEventRepo(
+        inner=inner,
+        notification_repo=FakeNotificationRepo(),
+        article_repo=FakeArticleRepo([_article()]),
+        workspace_repo=FakeWorkspaceRepo([Workspace(id="ws_1", name="W", owner_user_id="u_creator")]),
+        email_service=email_svc,
+    )
+    await repo.create(_event(ArticleEventType.REPLY_ADDED, "u_qc"))
+    assert email_svc.calls == []

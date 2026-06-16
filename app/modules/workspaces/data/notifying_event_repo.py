@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from app.core.logging_mixin import LoggerMixin
+from app.modules.email.service import EmailService
 from app.modules.notifications.data.model import Notification, NotificationType
 from app.modules.notifications.domain.repo import NotificationRepo
 from app.modules.workspaces.data.model import Article, ArticleEvent, ArticleEventType
@@ -22,6 +23,12 @@ _TO_CREATOR: dict[ArticleEventType, NotificationType] = {
     ArticleEventType.APPROVED: NotificationType.APPROVED,
     ArticleEventType.REJECTED: NotificationType.REJECTED,
 }
+
+_EMAIL_EVENT_TYPES: frozenset[ArticleEventType] = frozenset({
+    ArticleEventType.REVIEW_PUBLISHED,
+    ArticleEventType.APPROVED,
+    ArticleEventType.REJECTED,
+})
 
 
 def build_notification(
@@ -60,6 +67,7 @@ class NotifyingEventRepo(LoggerMixin, ArticleEventRepo):
     notification_repo: NotificationRepo
     article_repo: ArticleRepo
     workspace_repo: WorkspaceRepo
+    email_service: EmailService
 
     async def create(self, event: ArticleEvent) -> ArticleEvent:
         await self.inner.create(event)
@@ -75,6 +83,12 @@ class NotifyingEventRepo(LoggerMixin, ArticleEventRepo):
             notification = build_notification(event, article, ws.owner_user_id)
             if notification is not None:
                 await self.notification_repo.create(notification)
+            if event.type in _EMAIL_EVENT_TYPES:
+                self.email_service.schedule(
+                    event_type=event.type,
+                    article=article,
+                    creator_user_id=ws.owner_user_id,
+                )
         except Exception as exc:  # noqa: BLE001 - notifications are best-effort
             self.log_warning(
                 f"Failed to generate notification for event {event.id} ({event.type.value}): {exc}"

@@ -1,8 +1,10 @@
 # app/modules/workspaces/presentation/deps.py
 from functools import lru_cache
 
+from app.modules.email.service import EmailService
 from app.modules.notifications.data.repo import NotificationDataRepository
 from app.modules.notifications.domain.repo import NotificationRepo
+from app.modules.users.presentation.deps import get_user_repo
 from app.modules.workspaces.data.notifying_event_repo import NotifyingEventRepo
 from app.modules.workspaces.data.repo import (
     ArticleDataRepository,
@@ -78,6 +80,18 @@ def get_notification_repo() -> NotificationRepo:
 
 
 @lru_cache(maxsize=1)
+def get_email_service() -> EmailService:
+    from app.core.settings import settings
+
+    return EmailService(
+        from_email=settings.from_email,
+        email_app_password=settings.email_app_password,
+        frontend_base_url=settings.frontend_base_url,
+        user_repo=get_user_repo(),
+    )
+
+
+@lru_cache(maxsize=1)
 def _get_raw_event_repo() -> ArticleEventRepo:
     return ArticleEventDataRepository()
 
@@ -90,6 +104,7 @@ def get_event_repo() -> ArticleEventRepo:
         notification_repo=get_notification_repo(),
         article_repo=get_article_repo(),
         workspace_repo=get_workspace_repo(),
+        email_service=get_email_service(),
     )
 
 
