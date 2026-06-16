@@ -82,6 +82,8 @@ def _eval(node: ast.AST, ns: dict[str, Any]) -> Any:
     if isinstance(node, ast.IfExp):
         return _eval(node.body, ns) if _eval(node.test, ns) else _eval(node.orelse, ns)
     if isinstance(node, ast.Call):
-        fn = _FUNCS[node.func.id]  # node.func validated as Name in _FUNCS
+        fn = _FUNCS.get(getattr(node.func, "id", None))
+        if fn is None:
+            raise ExprError("Hàm không cho phép")
         return fn(*[_eval(a, ns) for a in node.args])
     raise ExprError(f"Không đánh giá được: {type(node).__name__}")

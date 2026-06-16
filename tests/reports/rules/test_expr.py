@@ -32,3 +32,8 @@ def test_validate_rejects_attribute_and_call():
 def test_validate_accepts_whitelisted():
     validate_expr("round(total_award * 0.1) if total_award > 0 else 0", {"total_award"})
     validate_expr("max(a, b) + min(a, b)", {"a", "b"})
+
+
+def test_eval_unvalidated_bad_call_raises_exprerror():
+    with pytest.raises(ExprError):
+        eval_expr("open('x')", {})
