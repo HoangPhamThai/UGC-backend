@@ -122,13 +122,9 @@ async def lifespan(app: FastAPI):
                 email=settings.qc_email,
                 password=settings.qc_password,
                 role=UserRole.QC,
-                qc_products=[
-                    Product(code.strip())
-                    for code in settings.qc_products.split(",")
-                    if code.strip()
-                ]
-                if settings.qc_products
-                else None,
+                # Default QC account covers every product. Reconciled on every
+                # startup by BootstrapDefaultAccountsUseCase.
+                qc_products=list(Product),
             ),
         ]
     )

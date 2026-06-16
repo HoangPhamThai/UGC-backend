@@ -48,6 +48,22 @@ class BootstrapDefaultAccountsUseCase(LoggerMixin):
 
             existing = await self.user_repo.get_by_email(account.email)
             if existing is not None:
+                # Re-init on every startup: keep the default QC account's product
+                # assignment in sync with the configured set, even though the
+                # account itself already exists.
+                if (
+                    role == UserRole.QC
+                    and existing.role == UserRole.QC
+                    and account.qc_products
+                    and set(existing.qc_products) != set(account.qc_products)
+                ):
+                    existing.qc_products = list(account.qc_products)
+                    await self.user_repo.update(existing)
+                    self.log_info(
+                        f"Default qc account '{account.email}' qc_products "
+                        f"reconciled to {[p.value for p in account.qc_products]}"
+                    )
+                    return
                 self.log_info(
                     f"Default {role.value} account already exists: "
                     f"'{account.email}' (role={existing.role.value}); "
