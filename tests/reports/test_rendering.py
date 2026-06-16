@@ -8,6 +8,8 @@ docx = pytest.importorskip("docx")  # skip if python-docx not installed locally
 from app.modules.reports.rendering import TEMPLATE_PATH, render_acceptance_report, validate_template_bytes
 from app.modules.reports.domain.errors import ReportValidationError
 
+ZWSP = "​"
+
 
 def _all_text(document) -> str:
     parts = [p.text for p in document.paragraphs]
@@ -68,10 +70,11 @@ def test_render_substitutes_scalars_and_clones_rows():
     document = docx.Document(BytesIO(out))
     text = _all_text(document)
 
+    text_no_zwsp = text.replace(ZWSP, "")
     assert "{" not in text and "}" not in text
     assert "Nguyen Van A" in text
     assert "Chín trăm nghìn" in text
-    assert "https://tt/1" in text and "https://th/2" in text
+    assert "https://tt/1" in text_no_zwsp and "https://th/2" in text_no_zwsp
     assert "tiktok" in text and "threads" in text
 
 
@@ -79,7 +82,8 @@ def test_render_handles_single_item():
     out = render_acceptance_report(scalars=_scalars(), line_items=_items()[:1])
     document = docx.Document(BytesIO(out))
     text = _all_text(document)
-    assert "https://tt/1" in text and "https://th/2" not in text
+    text_no_zwsp = text.replace(ZWSP, "")
+    assert "https://tt/1" in text_no_zwsp and "https://th/2" not in text_no_zwsp
     assert "{article_platform}" not in text
 
 
@@ -153,3 +157,28 @@ def test_render_clears_token_when_no_image():
     out = render_acceptance_report(scalars={}, line_items=[item], template_bytes=tpl)
     doc = docx.Document(BytesIO(out))
     assert "{article_image}" not in doc.tables[0].cell(0, 2).text
+
+
+def _cell_text(document, table_idx, row_idx, col_idx):
+    return document.tables[table_idx].rows[row_idx].cells[col_idx].text
+
+
+def test_link_gets_break_opportunities():
+    # link col = index 3, data row = index 1 (after header) in the article table
+    link = "https://www.youtube.com/watch?v=abc-def_123&x=1"
+    item = {
+        "article_id": "art_1", "article_platform": "tiktok",
+        "article_id_autoinc": "1", "article_on_air": "2026-06-01",
+        "article_link": link, "article_view": "100",
+        "article_image": "", "article_bonus_money": "  ",
+    }
+    out = render_acceptance_report(scalars=_scalars(), line_items=[item])
+    document = docx.Document(BytesIO(out))
+    cell_text = _cell_text(document, 0, 1, 3)
+
+    assert ZWSP in cell_text  # break opportunities inserted
+    assert cell_text.replace(ZWSP, "") == link  # stripping ZWSP yields the intact URL
+    # ZWSP sits right after URL separator characters
+    assert "/" + ZWSP in cell_text
+    assert "?" + ZWSP in cell_text
+    assert "-" + ZWSP in cell_text

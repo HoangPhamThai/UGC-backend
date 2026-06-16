@@ -64,9 +64,28 @@ def _insert_image_in_cell(cell, image_bytes: bytes) -> None:
         pic.height = int(pic.height * scale)
 
 
+_ZWSP = "​"
+_LINK_BREAK_AFTER = "/.?&-_="
+
+
+def _add_break_opportunities(url: str) -> str:
+    """Insert a zero-width space after URL separator characters so Word can wrap
+    the link inside a fixed-width cell. ZWSP is invisible; copy-paste stays intact."""
+    if not url:
+        return url
+    out = []
+    for ch in url:
+        out.append(ch)
+        if ch in _LINK_BREAK_AFTER:
+            out.append(_ZWSP)
+    return "".join(out)
+
+
 def _fill_row(row, item: dict) -> None:
     image_bytes: Optional[bytes] = item.get("_image_bytes")
     mapping = {k: str(item.get(k, "")) for k in _ROW_KEYS if k != "article_image"}
+    if "article_link" in mapping:
+        mapping["article_link"] = _add_break_opportunities(mapping["article_link"])
     for cell in row.cells:
         cell_text = " ".join(p.text for p in cell.paragraphs)
         if "{article_image}" in cell_text:
