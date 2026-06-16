@@ -7,7 +7,7 @@ from app.modules.reports.data.repo import (
     ReportSourceDataRepository,
 )
 from app.modules.reports.data.template_repo import TemplateDataRepository
-from app.modules.reports.domain.repo import AcceptanceReportRepo, ReportSourceRepo, TemplateRepo
+from app.modules.reports.domain.repo import AcceptanceReportRepo, ReportRulesRepo, ReportSourceRepo, TemplateRepo
 from app.modules.reports.domain.usecases.delete_report import DeleteReportUseCase
 from app.modules.reports.domain.usecases.download_report import DownloadReportUseCase
 from app.modules.reports.domain.usecases.preview_report import PreviewReportUseCase
@@ -36,6 +36,8 @@ from app.modules.reports.domain.usecases.template import (
     GetTemplateUseCase,
     UploadTemplateUseCase,
 )
+from app.modules.reports.data.rules_repo import ReportRulesDataRepository
+from app.modules.reports.domain.usecases.rules import GetRulesUseCase, SaveRulesUseCase
 from app.modules.workspaces.extraction.deps import get_extractor
 from app.modules.workspaces.presentation.deps import get_article_repo
 
@@ -172,3 +174,16 @@ def get_uc_get_my_report() -> GetMyReportUseCase:
 
 def get_storage():
     return _storage()
+
+
+@lru_cache(maxsize=1)
+def get_rules_repo() -> ReportRulesRepo:
+    return ReportRulesDataRepository()
+
+
+def get_uc_get_rules() -> GetRulesUseCase:
+    return GetRulesUseCase(rules_repo=get_rules_repo())
+
+
+def get_uc_save_rules() -> SaveRulesUseCase:
+    return SaveRulesUseCase(rules_repo=get_rules_repo())

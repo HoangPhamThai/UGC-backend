@@ -134,6 +134,27 @@ def _content_type_from_key(key: str) -> str:
     }.get(ext, "application/octet-stream")
 
 
+class SaveRulesRequest(BaseModel):
+    source_markdown: str = ""
+    ir: dict
+
+
+class RulesResponse(BaseModel):
+    source_markdown: str
+    ir: dict
+    warnings: list[dict]
+    status: str
+
+
+class FieldRegistryEntry(BaseModel):
+    key: str
+    scope: str
+    type: str
+    writable: bool
+    description: str
+    enum_values: Optional[list[str]] = None
+
+
 class LineItemResponse(BaseModel):
     article_id: str
     seq: int

@@ -19,6 +19,7 @@ from app.modules.reports.presentation.deps import (
     get_uc_generate_reports,
     get_uc_get_my_report,
     get_uc_get_report,
+    get_uc_get_rules,
     get_uc_get_template,
     get_uc_list_eligible,
     get_uc_list_my_reports,
@@ -26,6 +27,7 @@ from app.modules.reports.presentation.deps import (
     get_uc_recheck_link_metrics,
     get_uc_regenerate_report,
     get_uc_report_statistics,
+    get_uc_save_rules,
     get_uc_submit_report,
     get_uc_upload_article_image,
     get_uc_upload_template,
@@ -33,15 +35,19 @@ from app.modules.reports.presentation.deps import (
 )
 from app.modules.reports.presentation.schema import (
     EligibleGroupResponse,
+    FieldRegistryEntry,
     GenerateReportsRequest,
     LineItemResponse,
     RecheckResponse,
     ReportDetailResponse,
     ReportResponse,
     ReportStatisticsResponse,
+    RulesResponse,
+    SaveRulesRequest,
     TemplateMetaResponse,
     _content_type_from_key,
 )
+from app.modules.reports.rules.registry import FIELD_REGISTRY
 from app.modules.users.data.model import User
 
 router = APIRouter(tags=["reports"])
@@ -182,6 +188,38 @@ async def get_report_image(
         raise HTTPException(status_code=404, detail="Image not found")
     data = await storage.get(item.article_image)
     return Response(content=data, media_type=_content_type_from_key(item.article_image))
+
+
+@router.get("/report-rules", response_model=StandardResponse[RulesResponse])
+async def get_report_rules(
+    current_user: User = Depends(require_permissions(Permission.REPORTS_MANAGE)),
+    uc=Depends(get_uc_get_rules),
+):
+    data = await uc.execute()
+    return create_success_response(RulesResponse(**data))
+
+
+@router.post("/report-rules", response_model=StandardResponse[RulesResponse])
+async def save_report_rules(
+    body: SaveRulesRequest = Body(...),
+    current_user: User = Depends(require_permissions(Permission.REPORTS_MANAGE)),
+    uc=Depends(get_uc_save_rules),
+):
+    doc = await uc.execute(source_markdown=body.source_markdown, ir=body.ir, updated_by=current_user.id)
+    return create_success_response(RulesResponse(
+        source_markdown=doc["source_markdown"], ir=doc["ir"],
+        warnings=doc.get("warnings", []), status=doc["status"]))
+
+
+@router.get("/report-rules/registry", response_model=StandardResponse[list[FieldRegistryEntry]])
+async def get_report_rules_registry(
+    current_user: User = Depends(require_permissions(Permission.REPORTS_MANAGE)),
+):
+    entries = [FieldRegistryEntry(
+        key=f.key, scope=f.scope, type=f.type, writable=f.writable,
+        description=f.description, enum_values=list(f.enum_values) if f.enum_values else None,
+    ) for f in FIELD_REGISTRY.values()]
+    return create_success_response(entries)
 
 
 @router.get("/reports/{report_id}", response_model=StandardResponse[ReportResponse])
