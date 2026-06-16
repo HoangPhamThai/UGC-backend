@@ -79,6 +79,7 @@ class GenerateReportsUseCase(LoggerMixin):
             total_award = article_award_price * count
             tax = round(total_award * tax_rate)  # scales with count; never exceeds total
             final_award = total_award - tax
+            report_award_price = article_award_price
 
             bonus_by_article: dict[str, int] = {}
             if active_ir is not None:
@@ -96,7 +97,7 @@ class GenerateReportsUseCase(LoggerMixin):
                 ]
                 out_s, out_i = apply_rules(active_ir, base_scalars, base_items)
                 tax = int(out_s["tax"]); total_award = int(out_s["total_award"])
-                final_award = int(out_s["final_award"]); article_award_price = int(out_s["article_award_price"])
+                final_award = int(out_s["final_award"]); report_award_price = int(out_s["article_award_price"])
                 bonus_by_article = {it["article_id"]: int(it["article_bonus_money"]) for it in out_i}
 
             line_items = [
@@ -115,7 +116,7 @@ class GenerateReportsUseCase(LoggerMixin):
                 created_by=created_by,
                 creator_snapshot=snapshot,
                 line_items=line_items,
-                article_award_price=article_award_price,
+                article_award_price=report_award_price,
                 total_approved_articles=count,
                 total_award=total_award,
                 tax=tax,
