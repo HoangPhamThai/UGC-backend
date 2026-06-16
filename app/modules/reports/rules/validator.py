@@ -66,7 +66,8 @@ def _validate_lookup(rid: str, rule, readable: set[str]) -> list[str]:
             if isinstance(val, list):
                 if len(val) != 2 or val[0] > val[1]:
                     errs.append(f"[{rid}] match#{i}: range {val} phải là [lo, hi] với lo<=hi")
-            elif fd.type == "enum" and fd.enum_values and str(val) not in fd.enum_values:
+            elif (fd.type == "enum" and fd.enum_values
+                  and str(val).strip().lower() not in {e.lower() for e in fd.enum_values}):
                 errs.append(f"[{rid}] match#{i}: giá trị enum {val!r} ngoài {fd.enum_values}")
     if not isinstance(rule.default, int):
         errs.append(f"[{rid}] lookup_table default phải là số nguyên")

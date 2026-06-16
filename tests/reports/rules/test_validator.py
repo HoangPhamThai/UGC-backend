@@ -60,3 +60,10 @@ def test_lookup_range_lo_gt_hi():
     bad = dict(_OK["rules"][0])
     bad = {**bad, "match": [{"when": {"article_platform": "Threads", "article_view": [10, 5]}, "value": 1}]}
     assert validate_ir({"version": 1, "rules": [bad]})
+
+
+def test_lookup_enum_value_is_case_insensitive():
+    bad = dict(_OK["rules"][0])
+    bad = {**bad, "match": [{"when": {"article_platform": "tiktok", "article_view": [1, 2]}, "value": 1}]}
+    # lowercase 'tiktok' must be accepted (engine matches case-insensitively)
+    assert validate_ir({"version": 1, "rules": [bad]}) == []
