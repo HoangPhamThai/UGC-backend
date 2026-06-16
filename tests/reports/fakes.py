@@ -118,3 +118,13 @@ def make_eligible(article_id="art_1", owner="u_creator", views=100) -> EligibleA
         platform="tiktok", on_air_date=date(2026, 6, 1),
         link=f"https://x/{article_id}", views=views,
     )
+
+
+class RecordingEmailService:
+    """Duck-typed stand-in for EmailService that records report email schedules."""
+
+    def __init__(self) -> None:
+        self.report_events: list[tuple] = []
+
+    def schedule_report_event(self, *, event, period, creator_user_id) -> None:
+        self.report_events.append((event, period, creator_user_id))
