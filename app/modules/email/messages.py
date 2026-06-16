@@ -17,8 +17,8 @@ def build_email_content(
 ) -> EmailContent:
     if event_type == ArticleEventType.REVIEW_PUBLISHED:
         return EmailContent(
-            subject=f"Bài viết {article_name} đã được nhận xét",
-            body_text=f"Bài viết {article_name} đã được nhận xét. Nhấn để xem.",
+            subject=f"[UGC] Bài viết {article_name} đã được nhận xét",
+            body_text=f"Bạn thân mến,\n\nBài viết {article_name} đã được nhận xét. Nhấn để xem.",
         )
     if event_type == ArticleEventType.APPROVED:
         return EmailContent(

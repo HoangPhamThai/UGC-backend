@@ -9,8 +9,8 @@ def test_review_published_message():
         ArticleEventType.REVIEW_PUBLISHED, article_name="Bài A", reject_reason=None
     )
     assert c == EmailContent(
-        subject="Bài viết Bài A đã được nhận xét",
-        body_text="Bài viết Bài A đã được nhận xét. Nhấn để xem.",
+        subject="[UGC] Bài viết Bài A đã được nhận xét",
+        body_text="Bạn thân mến,\n\nBài viết Bài A đã được nhận xét. Nhấn để xem.",
     )
 
 
