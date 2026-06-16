@@ -5,10 +5,8 @@ import pytest
 
 docx = pytest.importorskip("docx")  # skip if python-docx not installed locally
 
-from app.modules.reports.rendering import TEMPLATE_PATH, render_acceptance_report, validate_template_bytes
+from app.modules.reports.rendering import TEMPLATE_PATH, render_acceptance_report, validate_template_bytes, _ZWSP as ZWSP
 from app.modules.reports.domain.errors import ReportValidationError
-
-ZWSP = "​"
 
 
 def _all_text(document) -> str:

@@ -64,8 +64,8 @@ def _insert_image_in_cell(cell, image_bytes: bytes) -> None:
         pic.height = int(pic.height * scale)
 
 
-_ZWSP = "​"
-_LINK_BREAK_AFTER = "/.?&-_="
+_ZWSP = "​"  # ZERO WIDTH SPACE — lets Word break long URLs in fixed-width cells
+_LINK_BREAK_AFTER = "/.?&-_="  # chars after which a ZWSP is inserted
 
 
 def _add_break_opportunities(url: str) -> str:
@@ -84,8 +84,7 @@ def _add_break_opportunities(url: str) -> str:
 def _fill_row(row, item: dict) -> None:
     image_bytes: Optional[bytes] = item.get("_image_bytes")
     mapping = {k: str(item.get(k, "")) for k in _ROW_KEYS if k != "article_image"}
-    if "article_link" in mapping:
-        mapping["article_link"] = _add_break_opportunities(mapping["article_link"])
+    mapping["article_link"] = _add_break_opportunities(mapping["article_link"])
     for cell in row.cells:
         cell_text = " ".join(p.text for p in cell.paragraphs)
         if "{article_image}" in cell_text:
