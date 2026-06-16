@@ -27,6 +27,7 @@ from app.modules.statistics.domain.errors import (
 )
 from app.modules.chat.domain.errors import ChatError, ChatSessionNotFoundError
 from app.modules.review_jobs.domain.errors import ReviewJobError, ReviewJobNotFoundError
+from app.modules.report_rule_jobs.domain.errors import RuleJobError, RuleJobNotFoundError
 from app.modules.reports.domain.errors import (
     ReportError,
     ReportNotFoundError,
@@ -111,6 +112,17 @@ async def review_jobs_exception_handler(request: Request, exc: ReviewJobError):
     return JSONResponse(status_code=status_code, content=_envelope(message))
 
 
+_RULE_JOB_STATUS: dict[type[RuleJobError], int] = {
+    RuleJobNotFoundError: 404,
+}
+
+
+async def rule_jobs_exception_handler(request: Request, exc: RuleJobError):
+    status_code = _RULE_JOB_STATUS.get(type(exc), 500)
+    message = str(exc) if str(exc) else "Internal error"
+    return JSONResponse(status_code=status_code, content=_envelope(message))
+
+
 _REPORTS_STATUS: dict[type[ReportError], int] = {
     ReportNotFoundError: 404,
     ReportStateConflictError: 409,
@@ -135,5 +147,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         app.add_exception_handler(exc_cls, chat_exception_handler)
     for exc_cls in _REVIEW_JOB_STATUS:
         app.add_exception_handler(exc_cls, review_jobs_exception_handler)
+    for exc_cls in _RULE_JOB_STATUS:
+        app.add_exception_handler(exc_cls, rule_jobs_exception_handler)
     for exc_cls in _REPORTS_STATUS:
         app.add_exception_handler(exc_cls, reports_exception_handler)
