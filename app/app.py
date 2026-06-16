@@ -45,6 +45,8 @@ from app.modules.profiles.data.repo import CreatorProfileDataRepository
 from app.modules.profiles.presentation.routes import router as profiles_router
 from app.modules.reports.data.repo import AcceptanceReportDataRepository
 from app.modules.reports.presentation.routes import router as reports_router
+from app.modules.report_rule_jobs.data.repo import RuleJobDataRepository
+from app.modules.report_rule_jobs.presentation.routes import router as report_rule_jobs_router
 
 
 logging.basicConfig(
@@ -70,6 +72,7 @@ async def lifespan(app: FastAPI):
     await ReviewJobDataRepository().ensure_indexes()
     await CreatorProfileDataRepository().ensure_indexes()
     await AcceptanceReportDataRepository().ensure_indexes()
+    await RuleJobDataRepository().ensure_indexes()
 
     # Heal legacy user docs (singular `qc_product` -> `qc_products` array) BEFORE
     # bootstrap reads any account. Idempotent; a no-op once migrated.
@@ -157,6 +160,7 @@ app.include_router(chat_router, prefix="/api/v1")
 app.include_router(review_jobs_router, prefix="/api/v1")
 app.include_router(profiles_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
+app.include_router(report_rule_jobs_router, prefix="/api/v1")
 
 
 @app.get("/health")
