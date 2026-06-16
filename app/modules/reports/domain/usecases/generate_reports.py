@@ -56,8 +56,8 @@ class GenerateReportsUseCase(LoggerMixin):
             if doc and (doc.get("ir", {}) or {}).get("rules"):
                 try:
                     active_ir = RuleIR.model_validate(doc["ir"])
-                except Exception:  # noqa: BLE001 — invalid active IR: skip rules defensively
-                    self.log_warning("active rules IR invalid; skipping rule application")
+                except Exception as exc:  # noqa: BLE001 — invalid active IR: skip rules defensively
+                    self.log_warning(f"active rules IR invalid ({exc}); skipping rule application")
 
         by_creator: dict[str, list] = {}
         for a in eligible:
@@ -96,9 +96,12 @@ class GenerateReportsUseCase(LoggerMixin):
                     for a in ordered
                 ]
                 out_s, out_i = apply_rules(active_ir, base_scalars, base_items)
-                tax = int(out_s["tax"]); total_award = int(out_s["total_award"])
-                final_award = int(out_s["final_award"]); report_award_price = int(out_s["article_award_price"])
-                bonus_by_article = {it["article_id"]: int(it["article_bonus_money"]) for it in out_i}
+                tax = int(out_s["tax"])
+                total_award = int(out_s["total_award"])
+                final_award = int(out_s["final_award"])
+                report_award_price = int(out_s["article_award_price"])
+                bonus_by_article = {it["article_id"]: int(it["article_bonus_money"])
+                                    for it in out_i if int(it["article_bonus_money"]) != 0}
 
             line_items = [
                 LineItem(

@@ -42,3 +42,24 @@ def test_apply_rules_produces_expected_numeric_overrides():
     out_s, out_i = apply_rules(ir, scalars, items)
     assert out_s["tax"] == 300_000
     assert _vnd(out_i[0]["article_bonus_money"]) == "25.000"
+
+
+def test_zero_bonus_falls_back_to_blank_placeholder():
+    # When a bonus rule yields 0 for an article (no range match -> default 0),
+    # the generate loop must render the blank "  " placeholder, not "0".
+    from app.modules.reports.rules.engine import apply_rules
+    from app.modules.reports.rules.ir import RuleIR
+    ir = RuleIR.model_validate({"version": 1, "rules": [
+        {"id": "bonus", "description": "", "target": "article_bonus_money", "scope": "line_item",
+         "type": "lookup_table", "inputs": ["article_platform", "article_view"],
+         "match": [{"when": {"article_platform": "Threads", "article_view": [5000, 10000]}, "value": 25000}],
+         "default": 0},
+    ]})
+    items = [
+        {"article_id": "a1", "article_platform": "Threads", "article_view": 6000, "article_bonus_money": 0},
+        {"article_id": "a2", "article_platform": "Threads", "article_view": 10, "article_bonus_money": 0},
+    ]
+    _, out_i = apply_rules(ir, {}, items)
+    bonus_by_article = {it["article_id"]: int(it["article_bonus_money"])
+                        for it in out_i if int(it["article_bonus_money"]) != 0}
+    assert bonus_by_article == {"a1": 25000}  # a2 (0) excluded -> will render "  "
