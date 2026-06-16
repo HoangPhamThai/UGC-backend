@@ -114,7 +114,7 @@ class EmailService(LoggerMixin):
             html_body = render_html_email(
                 subject=content.subject,
                 body_text=content.body_text,
-                article_url=article_url,
+                action_url=article_url,
             )
             await self._send_with_retry(
                 to_addr=to_addr.strip(),
