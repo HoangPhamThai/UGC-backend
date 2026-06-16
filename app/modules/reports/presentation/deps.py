@@ -39,7 +39,7 @@ from app.modules.reports.domain.usecases.template import (
 from app.modules.reports.data.rules_repo import ReportRulesDataRepository
 from app.modules.reports.domain.usecases.rules import GetRulesUseCase, SaveRulesUseCase
 from app.modules.workspaces.extraction.deps import get_extractor
-from app.modules.workspaces.presentation.deps import get_article_repo
+from app.modules.workspaces.presentation.deps import get_article_repo, get_email_service
 
 
 @lru_cache(maxsize=1)
@@ -77,6 +77,7 @@ def get_uc_generate_reports() -> GenerateReportsUseCase:
         render=render_acceptance_report,
         template_repo=get_template_repo(),
         rules_repo=get_rules_repo(),
+        email_service=get_email_service(),
     )
 
 
@@ -166,6 +167,7 @@ def get_uc_approve_report() -> ApproveReportUseCase:
         storage=_storage(),
         render=render_acceptance_report,
         template_repo=get_template_repo(),
+        email_service=get_email_service(),
     )
 
 
