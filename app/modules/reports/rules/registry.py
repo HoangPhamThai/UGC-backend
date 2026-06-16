@@ -7,7 +7,7 @@ from typing import Literal, Optional
 Scope = Literal["scalar", "line_item"]
 FieldType = Literal["money_int", "int", "string", "enum"]
 
-_PLATFORMS = ["Threads", "Tiktok", "Facebook", "Youtube"]
+_PLATFORMS = ("Threads", "Tiktok", "Facebook", "Youtube")
 
 
 @dataclass(frozen=True)
@@ -17,7 +17,7 @@ class FieldDef:
     type: FieldType
     writable: bool
     description: str  # Vietnamese; fed to the LLM prompt
-    enum_values: Optional[list[str]] = None
+    enum_values: Optional[tuple[str, ...]] = None
 
 
 _FIELDS: list[FieldDef] = [

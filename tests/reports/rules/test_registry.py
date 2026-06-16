@@ -29,3 +29,4 @@ def test_scope_visibility():
 def test_enum_field_values():
     assert get_field("article_platform").type == "enum"
     assert get_field("article_platform").enum_values is not None
+    assert "Threads" in get_field("article_platform").enum_values
