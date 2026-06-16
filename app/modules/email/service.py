@@ -6,8 +6,16 @@ from typing import Callable, Optional, Protocol, Sequence
 import smtplib
 
 from app.core.logging_mixin import LoggerMixin
-from app.modules.email.messages import build_email_content
-from app.modules.email.templates import build_article_link, render_html_email
+from app.modules.email.messages import (
+    ReportEmailEvent,
+    build_email_content,
+    build_report_email_content,
+)
+from app.modules.email.templates import (
+    build_article_link,
+    build_report_link,
+    render_html_email,
+)
 from app.modules.users.domain.repo import UserRepo
 from app.modules.workspaces.data.model import Article, ArticleEventType
 
@@ -120,8 +128,8 @@ class EmailService(LoggerMixin):
                 to_addr=to_addr.strip(),
                 subject=content.subject,
                 html_body=html_body,
-                event_type=event_type,
-                article_id=article.id,
+                event_label=event_type.value,
+                ref_id=article.id,
             )
         except Exception as exc:  # noqa: BLE001 - best-effort background task
             self.log_warning(
@@ -134,8 +142,8 @@ class EmailService(LoggerMixin):
         to_addr: str,
         subject: str,
         html_body: str,
-        event_type: ArticleEventType,
-        article_id: str,
+        event_label: str,
+        ref_id: str,
     ) -> None:
         attempts = len(self.retry_delays) + 1
         for attempt in range(1, attempts + 1):
@@ -151,7 +159,7 @@ class EmailService(LoggerMixin):
                 if attempt >= attempts:
                     self.log_warning(
                         f"Email send failed after {attempts} attempts "
-                        f"(article={article_id}, event={event_type.value}, to={to_addr}): {exc}"
+                        f"(ref={ref_id}, event={event_label}, to={to_addr}): {exc}"
                     )
                     return
                 delay = self.retry_delays[attempt - 1]
@@ -159,6 +167,52 @@ class EmailService(LoggerMixin):
                     f"Email send attempt {attempt}/{attempts} failed; retrying in {delay}s: {exc}"
                 )
                 await asyncio.sleep(delay)
+
+    def schedule_report_event(
+        self, *, event: ReportEmailEvent, period: str, creator_user_id: str
+    ) -> None:
+        if not self.enabled:
+            self.log_info("Email notifications disabled; skipping report schedule")
+            return
+        asyncio.create_task(
+            self.send_report_event(
+                event=event, period=period, creator_user_id=creator_user_id
+            )
+        )
+
+    async def send_report_event(
+        self, *, event: ReportEmailEvent, period: str, creator_user_id: str
+    ) -> None:
+        if not self.enabled:
+            return
+        try:
+            user = await self.user_repo.get_by_id(creator_user_id)
+            to_addr = (user.email if user else "") or ""
+            if not to_addr.strip():
+                self.log_warning(
+                    f"No creator email for user {creator_user_id}; skipping report email"
+                )
+                return
+            content = build_report_email_content(event, period=period)
+            report_url = build_report_link(self.frontend_base_url or "")
+            html_body = render_html_email(
+                subject=content.subject,
+                body_text=content.body_text,
+                action_url=report_url,
+                button_label="Mở biên bản nghiệm thu",
+            )
+            await self._send_with_retry(
+                to_addr=to_addr.strip(),
+                subject=content.subject,
+                html_body=html_body,
+                event_label=event.value,
+                ref_id=f"report:{creator_user_id}:{period}",
+            )
+        except Exception as exc:  # noqa: BLE001 - best-effort background task
+            self.log_warning(
+                f"Report email task failed "
+                f"({event.value}, creator={creator_user_id}, period={period}): {exc}"
+            )
 
     def _send_sync(self, *, to_addr: str, subject: str, html_body: str) -> None:
         self.smtp_sender(
