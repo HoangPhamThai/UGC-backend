@@ -62,4 +62,4 @@ def build_report_email_content(
                 "Bạn có thể truy cập link bên dưới để xem chi tiết."
             ),
         )
-    raise ValueError(f"Unsupported report email event: {event.value}")
+    raise ValueError(f"Unsupported report email event: {event}")
