@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     minio_bucket: str = Field(default="acceptance-reports", alias="MINIO_BUCKET")
     minio_secure: bool = Field(default=False, alias="MINIO_SECURE")
 
+    # --- Email (QC creator notifications via Gmail SMTP) ---
+    from_email: Optional[str] = Field(default=None, alias="FROM_EMAIL")
+    email_app_password: Optional[str] = Field(default=None, alias="EMAIL_APP_PASSWORD")
+    frontend_base_url: Optional[str] = Field(default=None, alias="FRONTEND_BASE_URL")
+
     class Config:
         env_file = ".env"
         case_sensitive = False
