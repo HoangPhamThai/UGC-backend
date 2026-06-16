@@ -2,7 +2,10 @@ from fastapi import APIRouter, Body, Depends, HTTPException, status
 
 from app.core.auth import get_current_user
 from app.core.model import StandardResponse, create_success_response
-from app.modules.auth.domain.usecases.register import RegisterUseCase
+from app.modules.auth.domain.usecases.register import (
+    RegisterUseCase,
+    RoleNotAllowedError,
+)
 from app.modules.auth.domain.usecases.login import LoginUseCase
 from app.modules.auth.domain.usecases.refresh import RefreshTokenUseCase
 from app.modules.auth.domain.usecases.logout import LogoutUseCase
@@ -34,8 +37,10 @@ async def register(
     uc: RegisterUseCase = Depends(get_uc_register),
 ):
     try:
-        await uc.execute(email=body.email, password=body.password)
+        await uc.execute(email=body.email, password=body.password, role=body.role)
         return create_success_response(None, "User registered")
+    except RoleNotAllowedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
     except Exception as e:
