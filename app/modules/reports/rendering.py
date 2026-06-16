@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Optional
 
 from docx import Document
+from docx.oxml.ns import qn
+from docx.shared import Twips
 from docx.table import Table, _Row
 
 from app.modules.reports.domain.errors import ReportValidationError
@@ -12,6 +14,8 @@ REQUIRED_TEMPLATE_TOKENS = ("{creator_name}", "{final_award}", "{article_platfor
 TEMPLATE_PATH = str(Path(__file__).parent / "templates" / "acceptance_report.docx")
 
 _ROW_TOKEN = "{article_platform}"
+_FALLBACK_WIDTH_EMU = 1_828_800  # 2 inches — only used when column width can't be derived
+_CELL_SAFETY_MARGIN_EMU = int(Twips(230))  # ~0.16in, leaves room for cell padding so the image fits
 _ROW_KEYS = (
     "article_platform",
     "article_id_autoinc",
@@ -49,9 +53,27 @@ def _row_contains_token(row, token: str) -> bool:
     return any(token in cell.text for cell in row.cells)
 
 
-def _insert_image_in_cell(cell, image_bytes: bytes) -> None:
-    """Clear cell content and insert image, scaled to fit cell width."""
-    max_width = cell.width or 1_828_800  # fallback: 2 inches in EMU
+def _cell_column_width_emu(row, target_tc) -> Optional[int]:
+    """EMU width of the grid column(s) the cell occupies, read from tblGrid. None if not derivable."""
+    grid = row.table._tbl.find(qn("w:tblGrid"))
+    if grid is None:
+        return None
+    cols = grid.findall(qn("w:gridCol"))
+    idx = 0
+    for tc in row._tr.findall(qn("w:tc")):
+        span = tc.grid_span or 1
+        if tc is target_tc:
+            spanned = cols[idx:idx + span]
+            if not spanned or any(g.get(qn("w:w")) is None for g in spanned):
+                return None
+            total = sum(int(float(g.get(qn("w:w")))) for g in spanned)
+            return int(Twips(total))
+        idx += span
+    return None
+
+
+def _insert_image_in_cell(cell, image_bytes: bytes, max_width: int) -> None:
+    """Clear cell content and insert image, shrinking to max_width if wider; never upscales."""
     for paragraph in cell.paragraphs:
         for run in paragraph.runs:
             run.text = ""
@@ -89,7 +111,12 @@ def _fill_row(row, item: dict) -> None:
         cell_text = " ".join(p.text for p in cell.paragraphs)
         if "{article_image}" in cell_text:
             if image_bytes:
-                _insert_image_in_cell(cell, image_bytes)
+                col_w = _cell_column_width_emu(row, cell._tc)
+                if col_w is not None:
+                    max_width = max(col_w - _CELL_SAFETY_MARGIN_EMU, 1)
+                else:
+                    max_width = cell.width or _FALLBACK_WIDTH_EMU
+                _insert_image_in_cell(cell, image_bytes, max_width)
             else:
                 for paragraph in cell.paragraphs:
                     _replace_in_paragraph(paragraph, {"article_image": ""})

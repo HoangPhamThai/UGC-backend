@@ -180,3 +180,75 @@ def test_link_gets_break_opportunities():
     assert "/" + ZWSP in cell_text
     assert "?" + ZWSP in cell_text
     assert "-" + ZWSP in cell_text
+
+
+def _solid_png(w: int, h: int) -> bytes:
+    """Solid red w×h PNG, no external deps."""
+    import struct, zlib
+    def chunk(t, d):
+        return struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d) & 0xFFFFFFFF)
+    ihdr = struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)
+    raw = b"".join(b"\x00" + b"\xff\x00\x00" * w for _ in range(h))
+    idat = zlib.compress(raw)
+    return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', idat) + chunk(b'IEND', b'')
+
+
+def _grid_col_emu(document, table_idx, col_idx):
+    from docx.oxml.ns import qn
+    from docx.shared import Twips
+    grid = document.tables[table_idx]._tbl.find(qn('w:tblGrid'))
+    cols = grid.findall(qn('w:gridCol'))
+    return int(Twips(int(float(cols[col_idx].get(qn('w:w'))))))
+
+
+def _image_extent_cx(document, table_idx, row_idx, col_idx):
+    from docx.oxml.ns import qn
+    cell = document.tables[table_idx].rows[row_idx].cells[col_idx]
+    ext = cell._tc.findall('.//' + qn('wp:extent'))
+    return int(ext[0].get('cx')) if ext else None
+
+
+def _native_picture_width(image_bytes):
+    """Width (EMU) python-docx assigns when embedding the image at native size."""
+    from docx import Document as D
+    run = D().add_paragraph().add_run()
+    return run.add_picture(BytesIO(image_bytes)).width
+
+
+def _image_item(png_key="k/art_1.png"):
+    return {
+        "article_id": "art_1", "article_platform": "tiktok",
+        "article_id_autoinc": "1", "article_on_air": "2026-06-01",
+        "article_link": "https://x/1", "article_view": "100",
+        "article_image": png_key, "article_bonus_money": "  ",
+    }
+
+
+def test_large_image_scaled_to_column_width():
+    # image col = index 5 in the article table; data row = index 1
+    big = _solid_png(1000, 500)
+    out = render_acceptance_report(
+        scalars=_scalars(), line_items=[_image_item()],
+        line_item_images={"art_1": big},
+    )
+    document = docx.Document(BytesIO(out))
+    cx = _image_extent_cx(document, 0, 1, 5)
+    col_emu = _grid_col_emu(document, 0, 5)
+
+    assert cx is not None
+    assert cx <= col_emu              # not wider than the column
+    assert cx != 1_828_800            # not the old 2-inch fallback (the bug)
+
+
+def test_small_image_not_upscaled():
+    small = _1x1_png()  # smaller than the column → must be left at native size
+    native = _native_picture_width(small)
+    out = render_acceptance_report(
+        scalars=_scalars(), line_items=[_image_item()],
+        line_item_images={"art_1": small},
+    )
+    document = docx.Document(BytesIO(out))
+    cx = _image_extent_cx(document, 0, 1, 5)
+    col_emu = _grid_col_emu(document, 0, 5)
+    assert native < col_emu   # precondition: it does fit without scaling
+    assert cx == native       # not upscaled to column width, not shrunk
