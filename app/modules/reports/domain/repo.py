@@ -104,3 +104,16 @@ class AcceptanceReportRepo(ABC):
     async def approve(
         self, report_id: str, *, approved_by: str
     ) -> Optional[AcceptanceReport]: ...
+
+
+class ReportRulesRepo(ABC):
+    """Single active-rules document (markdown source + compiled IR + warnings)."""
+
+    @abstractmethod
+    async def get_active(self) -> Optional[dict]: ...
+
+    @abstractmethod
+    async def save_active(
+        self, *, source_markdown: str, ir: dict, warnings: list[dict],
+        status: str, updated_by: str,
+    ) -> dict: ...
