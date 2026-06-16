@@ -213,7 +213,7 @@ async def save_report_rules(
 
 @router.get("/report-rules/registry", response_model=StandardResponse[list[FieldRegistryEntry]])
 async def get_report_rules_registry(
-    current_user: User = Depends(require_permissions(Permission.REPORTS_MANAGE)),
+    current_user: User = Depends(require_permissions(Permission.REPORTS_READ)),
 ):
     entries = [FieldRegistryEntry(
         key=f.key, scope=f.scope, type=f.type, writable=f.writable,
