@@ -44,3 +44,28 @@ def test_rejected_message_includes_reason():
 def test_unsupported_event_raises():
     with pytest.raises(ValueError, match="Unsupported"):
         build_email_content(ArticleEventType.REPLY_ADDED, article_name="X", reject_reason=None)
+
+
+from app.modules.email.messages import build_report_email_content, ReportEmailEvent
+
+
+def test_report_created_message():
+    c = build_report_email_content(ReportEmailEvent.CREATED, period="2026-06")
+    assert c == EmailContent(
+        subject="[UGC] Biên bản nghiệm thu kỳ 2026-06 đã được tạo",
+        body_text=(
+            "Biên bản nghiệm thu của bạn đã được tạo. "
+            "Vui lòng truy cập link bên dưới để upload hình."
+        ),
+    )
+
+
+def test_report_approved_message():
+    c = build_report_email_content(ReportEmailEvent.APPROVED, period="2026-06")
+    assert c == EmailContent(
+        subject="[UGC] Biên bản nghiệm thu kỳ 2026-06 đã được duyệt",
+        body_text=(
+            "Biên bản nghiệm thu của bạn đã được duyệt. "
+            "Bạn có thể truy cập link bên dưới để xem chi tiết."
+        ),
+    )
