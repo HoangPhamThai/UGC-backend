@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 from app.core.logging_mixin import LoggerMixin
+from app.modules.email.messages import ReportEmailEvent
+from app.modules.email.service import EmailService
 from app.modules.profiles.data.model import REQUIRED_PROFILE_FIELDS
 from app.modules.reports.data.model import AcceptanceReport, ReportStatus
 from app.modules.reports.domain.errors import ReportNotFoundError, ReportStateConflictError
@@ -17,6 +19,7 @@ class ApproveReportUseCase(LoggerMixin):
     storage: ObjectStorage
     render: Callable[..., bytes]
     template_repo: TemplateRepo
+    email_service: Optional[EmailService] = None
 
     async def execute(self, *, report_id: str, approved_by: str) -> AcceptanceReport:
         report = await self.report_repo.get_by_id(report_id)
@@ -50,4 +53,10 @@ class ApproveReportUseCase(LoggerMixin):
         approved = await self.report_repo.approve(report_id, approved_by=approved_by)
         if approved is None:
             raise ReportNotFoundError()
+        if self.email_service is not None:
+            self.email_service.schedule_report_event(
+                event=ReportEmailEvent.APPROVED,
+                period=approved.period,
+                creator_user_id=approved.creator_user_id,
+            )
         return approved
