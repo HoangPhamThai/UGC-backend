@@ -10,6 +10,7 @@ from app.modules.users.domain.repo import UserRepo
 from app.modules.workspaces.data.model import Article, ArticleEventType, ArticleStatus, Product
 
 from app.modules.email.service import EmailService
+from app.modules.email.messages import ReportEmailEvent
 
 
 class FakeUserRepo(UserRepo):
@@ -165,9 +166,6 @@ def test_schedule_does_not_raise_when_disabled(monkeypatch):
         article=_article(),
         creator_user_id="u_creator",
     )
-
-
-from app.modules.email.messages import ReportEmailEvent
 
 
 @pytest.mark.asyncio
