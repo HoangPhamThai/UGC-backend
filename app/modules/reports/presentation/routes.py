@@ -222,14 +222,16 @@ async def get_report_rules_registry(
     return create_success_response(entries)
 
 
-@router.get("/reports/{report_id}", response_model=StandardResponse[ReportResponse])
+@router.get("/reports/{report_id}", response_model=StandardResponse[ReportDetailResponse])
 async def get_report(
     report_id: str = Path(...),
     current_user: User = Depends(require_permissions(Permission.REPORTS_READ)),
     uc=Depends(get_uc_get_report),
 ):
+    # Returns the detail shape (incl. line_items) so admins can view article
+    # images / approve without hitting the creator-scoped /me/reports/{id}.
     report = await uc.execute(report_id=report_id)
-    return create_success_response(ReportResponse.from_model(report))
+    return create_success_response(ReportDetailResponse.from_detail_model(report))
 
 
 @router.post("/reports/{report_id}/finalize", response_model=StandardResponse[ReportResponse])
