@@ -5,7 +5,7 @@ import pytest
 
 docx = pytest.importorskip("docx")  # skip if python-docx not installed locally
 
-from app.modules.reports.rendering import TEMPLATE_PATH, render_acceptance_report, validate_template_bytes, _ZWSP as ZWSP
+from app.modules.reports.rendering import TEMPLATE_PATH, render_acceptance_report, validate_template_bytes, _ZWSP as ZWSP, _CELL_SAFETY_MARGIN_EMU
 from app.modules.reports.domain.errors import ReportValidationError
 
 
@@ -116,14 +116,19 @@ def _minimal_docx_with_image_token() -> bytes:
     return buf.getvalue()
 
 
-def _1x1_png() -> bytes:
-    """Minimal valid 1x1 white PNG (no external deps)."""
+def _make_png(w: int, h: int) -> bytes:
+    """Solid red w×h PNG (no pHYs chunk), no external deps."""
     import struct, zlib
     def chunk(t, d):
         return struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d) & 0xFFFFFFFF)
-    ihdr = struct.pack('>IIBBBBB', 1, 1, 8, 2, 0, 0, 0)
-    idat = zlib.compress(b'\x00\xff\xff\xff')
+    ihdr = struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)
+    raw = b"".join(b"\x00" + b"\xff\x00\x00" * w for _ in range(h))
+    idat = zlib.compress(raw)
     return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', idat) + chunk(b'IEND', b'')
+
+
+def _1x1_png() -> bytes:
+    return _make_png(1, 1)
 
 
 def test_render_embeds_image_replaces_token():
@@ -183,14 +188,7 @@ def test_link_gets_break_opportunities():
 
 
 def _solid_png(w: int, h: int) -> bytes:
-    """Solid red w×h PNG, no external deps."""
-    import struct, zlib
-    def chunk(t, d):
-        return struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d) & 0xFFFFFFFF)
-    ihdr = struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)
-    raw = b"".join(b"\x00" + b"\xff\x00\x00" * w for _ in range(h))
-    idat = zlib.compress(raw)
-    return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', idat) + chunk(b'IEND', b'')
+    return _make_png(w, h)
 
 
 def _grid_col_emu(document, table_idx, col_idx):
@@ -236,8 +234,8 @@ def test_large_image_scaled_to_column_width():
     col_emu = _grid_col_emu(document, 0, 5)
 
     assert cx is not None
-    assert cx <= col_emu              # not wider than the column
     assert cx != 1_828_800            # not the old 2-inch fallback (the bug)
+    assert cx == col_emu - _CELL_SAFETY_MARGIN_EMU  # capped to column minus padding
 
 
 def test_small_image_not_upscaled():

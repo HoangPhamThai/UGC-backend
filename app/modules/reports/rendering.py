@@ -64,8 +64,9 @@ def _cell_column_width_emu(row, target_tc) -> Optional[int]:
         span = tc.grid_span or 1
         if tc is target_tc:
             spanned = cols[idx:idx + span]
-            if not spanned or any(g.get(qn("w:w")) is None for g in spanned):
+            if len(spanned) != span or any(g.get(qn("w:w")) is None for g in spanned):
                 return None
+            # w:w may be written as a decimal string by some Word versions
             total = sum(int(float(g.get(qn("w:w")))) for g in spanned)
             return int(Twips(total))
         idx += span
@@ -113,6 +114,7 @@ def _fill_row(row, item: dict) -> None:
             if image_bytes:
                 col_w = _cell_column_width_emu(row, cell._tc)
                 if col_w is not None:
+                    # clamp keeps width positive for pathologically narrow columns
                     max_width = max(col_w - _CELL_SAFETY_MARGIN_EMU, 1)
                 else:
                     max_width = cell.width or _FALLBACK_WIDTH_EMU
