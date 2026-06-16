@@ -54,9 +54,14 @@ class ApproveReportUseCase(LoggerMixin):
         if approved is None:
             raise ReportNotFoundError()
         if self.email_service is not None:
-            self.email_service.schedule_report_event(
-                event=ReportEmailEvent.APPROVED,
-                period=approved.period,
-                creator_user_id=approved.creator_user_id,
-            )
+            try:
+                self.email_service.schedule_report_event(
+                    event=ReportEmailEvent.APPROVED,
+                    period=approved.period,
+                    creator_user_id=approved.creator_user_id,
+                )
+            except Exception as exc:  # noqa: BLE001 - email is best-effort
+                self.log_warning(
+                    f"Failed to schedule approval email for report {approved.id}: {exc}"
+                )
         return approved

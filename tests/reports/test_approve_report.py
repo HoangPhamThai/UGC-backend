@@ -1,5 +1,6 @@
 import pytest
 
+from app.modules.email.messages import ReportEmailEvent
 from app.modules.profiles.data.model import REQUIRED_PROFILE_FIELDS
 from app.modules.reports.data.model import LineItem, ReportStatus
 from app.modules.reports.domain.errors import ReportNotFoundError, ReportStateConflictError
@@ -82,7 +83,6 @@ async def test_approve_rejected_for_incomplete_profile():
 
 @pytest.mark.asyncio
 async def test_approve_schedules_approved_email():
-    from app.modules.email.messages import ReportEmailEvent
     r = _reviewing()
     email = RecordingEmailService()
     uc, storage = _make_uc([r], email_service=email)
@@ -100,3 +100,18 @@ async def test_approve_non_reviewing_does_not_schedule_email():
     with pytest.raises(ReportStateConflictError):
         await uc.execute(report_id=r.id, approved_by="u_admin")
     assert email.report_events == []
+
+
+@pytest.mark.asyncio
+async def test_approve_succeeds_when_email_scheduling_fails():
+    r = _reviewing()
+
+    class _BoomEmail:
+        def schedule_report_event(self, **kwargs):
+            raise RuntimeError("no running event loop")
+
+    uc, storage = _make_uc([r], email_service=_BoomEmail())
+    await storage.put(r.line_items[0].article_image, b"IMG", content_type="image/jpeg")
+
+    approved = await uc.execute(report_id=r.id, approved_by="u_admin")
+    assert approved.status == ReportStatus.FINAL

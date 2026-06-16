@@ -141,10 +141,15 @@ class GenerateReportsUseCase(LoggerMixin):
 
             created.append(report)
             if self.email_service is not None:
-                self.email_service.schedule_report_event(
-                    event=ReportEmailEvent.CREATED,
-                    period=period,
-                    creator_user_id=owner_id,
-                )
+                try:
+                    self.email_service.schedule_report_event(
+                        event=ReportEmailEvent.CREATED,
+                        period=period,
+                        creator_user_id=owner_id,
+                    )
+                except Exception as exc:  # noqa: BLE001 - email is best-effort
+                    self.log_warning(
+                        f"Failed to schedule created email for report {report.id}: {exc}"
+                    )
             self.log_info(f"Report drafted: id={report.id} creator={owner_id} n={count}")
         return created
