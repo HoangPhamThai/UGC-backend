@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(default=2, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
     refresh_token_expire_days: int = Field(default=7, alias="REFRESH_TOKEN_EXPIRE_DAYS")
 
+    # --- Demo mode ---
+    # When true, the public /auth/register endpoint accepts roles other than
+    # creator (qc, admin) and the frontend shows the role dropdown. Off by
+    # default — never enable in production.
+    demo_mode: bool = Field(default=False, alias="DEMO_MODE")
+
     # --- Default bootstrap accounts ---
     superuser_email: Optional[str] = Field(default=None, alias="SUPERUSER_EMAIL")
     superuser_password: Optional[str] = Field(default=None, alias="SUPERUSER_PASSWORD")
