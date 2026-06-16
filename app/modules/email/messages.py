@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 
 from app.modules.workspaces.data.model import ArticleEventType
 
@@ -35,3 +36,30 @@ def build_email_content(
             body_text=f"Bài viết {article_name} đã được huỷ với nội dung {reason}.",
         )
     raise ValueError(f"Unsupported email event type: {event_type.value}")
+
+
+class ReportEmailEvent(str, Enum):
+    CREATED = "report_created"
+    APPROVED = "report_approved"
+
+
+def build_report_email_content(
+    event: ReportEmailEvent, *, period: str
+) -> EmailContent:
+    if event == ReportEmailEvent.CREATED:
+        return EmailContent(
+            subject=f"[UGC] Biên bản nghiệm thu kỳ {period} đã được tạo",
+            body_text=(
+                "Biên bản nghiệm thu của bạn đã được tạo. "
+                "Vui lòng truy cập link bên dưới để upload hình."
+            ),
+        )
+    if event == ReportEmailEvent.APPROVED:
+        return EmailContent(
+            subject=f"[UGC] Biên bản nghiệm thu kỳ {period} đã được duyệt",
+            body_text=(
+                "Biên bản nghiệm thu của bạn đã được duyệt. "
+                "Bạn có thể truy cập link bên dưới để xem chi tiết."
+            ),
+        )
+    raise ValueError(f"Unsupported report email event: {event}")

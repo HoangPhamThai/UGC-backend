@@ -10,6 +10,7 @@ from app.modules.users.domain.repo import UserRepo
 from app.modules.workspaces.data.model import Article, ArticleEventType, ArticleStatus, Product
 
 from app.modules.email.service import EmailService
+from app.modules.email.messages import ReportEmailEvent
 
 
 class FakeUserRepo(UserRepo):
@@ -164,4 +165,73 @@ def test_schedule_does_not_raise_when_disabled(monkeypatch):
         event_type=ArticleEventType.APPROVED,
         article=_article(),
         creator_user_id="u_creator",
+    )
+
+
+@pytest.mark.asyncio
+async def test_send_report_event_success():
+    sender = RecordingSmtpSender()
+    svc = EmailService(
+        from_email="sender@gmail.com",
+        email_app_password="secret",
+        frontend_base_url="https://ugc.example.com",
+        user_repo=FakeUserRepo({"u_creator": User(_id="u_creator", email="c@x.com", password_hashed="x", role=UserRole.CREATOR)}),
+        smtp_sender=sender,
+    )
+    await svc.send_report_event(
+        event=ReportEmailEvent.CREATED,
+        period="2026-06",
+        creator_user_id="u_creator",
+    )
+    assert len(sender.calls) == 1
+    _, password, to_addr, subject, html = sender.calls[0]
+    assert to_addr == "c@x.com"
+    assert "2026-06" in subject
+    assert "đã được tạo" in subject
+    assert "https://ugc.example.com/me/reports" in html
+    assert "Mở biên bản nghiệm thu" in html
+
+
+@pytest.mark.asyncio
+async def test_send_report_event_skips_when_disabled():
+    sender = RecordingSmtpSender()
+    svc = EmailService(
+        from_email=None,
+        email_app_password=None,
+        frontend_base_url="https://ugc.example.com",
+        user_repo=FakeUserRepo({}),
+        smtp_sender=sender,
+    )
+    await svc.send_report_event(
+        event=ReportEmailEvent.APPROVED, period="2026-06", creator_user_id="u_creator"
+    )
+    assert sender.calls == []
+
+
+@pytest.mark.asyncio
+async def test_send_report_event_skips_when_creator_has_no_email():
+    sender = RecordingSmtpSender()
+    svc = EmailService(
+        from_email="sender@gmail.com",
+        email_app_password="secret",
+        frontend_base_url="https://ugc.example.com",
+        user_repo=FakeUserRepo({}),
+        smtp_sender=sender,
+    )
+    await svc.send_report_event(
+        event=ReportEmailEvent.APPROVED, period="2026-06", creator_user_id="missing"
+    )
+    assert sender.calls == []
+
+
+def test_schedule_report_event_does_not_raise_when_disabled(monkeypatch):
+    monkeypatch.setattr(asyncio, "create_task", lambda coro: coro.close() or None)
+    svc = EmailService(
+        from_email=None,
+        email_app_password=None,
+        frontend_base_url=None,
+        user_repo=FakeUserRepo({}),
+    )
+    svc.schedule_report_event(
+        event=ReportEmailEvent.CREATED, period="2026-06", creator_user_id="u_creator"
     )
