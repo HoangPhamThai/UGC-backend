@@ -1,9 +1,15 @@
 from pydantic import BaseModel, Field, EmailStr
 
+from app.modules.users.data.model import UserRole
+
 
 class RegisterRequest(BaseModel):
     email: EmailStr = Field(..., description="User email")
     password: str = Field(..., min_length=8, description="Password (min 8 chars)")
+    role: UserRole = Field(
+        default=UserRole.CREATOR,
+        description="Requested role; non-creator roles require DEMO_MODE",
+    )
 
 
 class LoginRequest(BaseModel):
