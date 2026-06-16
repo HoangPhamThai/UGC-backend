@@ -76,6 +76,7 @@ def get_uc_generate_reports() -> GenerateReportsUseCase:
         storage=_storage(),
         render=render_acceptance_report,
         template_repo=get_template_repo(),
+        rules_repo=get_rules_repo(),
     )
 
 
