@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from app.core.auth import get_current_principal
+from app.core.errors import register_exception_handlers
 from app.modules.reports.presentation import routes
 from app.modules.reports.presentation.deps import (
     get_uc_download_template,
@@ -33,6 +34,7 @@ def _fake_admin():
 
 def _app(repo: FakeTemplateRepo) -> FastAPI:
     app = FastAPI()
+    register_exception_handlers(app)
     app.include_router(routes.router, prefix="/api/v1")
     # Override the root auth dependency — all require_permissions(...) closures
     # call Depends(get_current_principal), so this single override bypasses auth.
@@ -54,7 +56,7 @@ async def test_get_template_meta_defaults_to_is_default_true():
 
 
 @pytest.mark.asyncio
-async def test_upload_template_accepts_valid_docx():
+async def test_upload_template_disabled_in_demo():
     repo = FakeTemplateRepo()
     app = _app(repo)
     transport = ASGITransport(app=app)
@@ -70,8 +72,15 @@ async def test_upload_template_accepts_valid_docx():
                 )
             },
         )
-    assert res.status_code == 200
-    assert res.json()["data"]["is_default"] is False
+    # Upload is disabled in the DEMO build: the request is refused with the
+    # standard error envelope and the stored template is left untouched.
+    assert res.status_code == 403
+    body = res.json()
+    assert body["success"] is False
+    assert body["message"] == (
+        "Sorry, this feature is not supported for DEMO. It will be available in production."
+    )
+    assert repo._bytes is None
 
 
 @pytest.mark.asyncio

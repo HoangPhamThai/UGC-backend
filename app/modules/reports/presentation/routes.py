@@ -155,13 +155,14 @@ async def upload_template(
     current_user: User = Depends(require_permissions(Permission.REPORTS_MANAGE)),
     uc=Depends(get_uc_upload_template),
 ):
-    data = await file.read()
-    view = await uc.execute(
-        data=data,
-        filename=file.filename or "template.docx",
-        uploaded_by=getattr(current_user, "id", "unknown"),
+    # Template upload is disabled in the DEMO build. Refuse before reading the
+    # file or touching storage so the existing template stays unchanged. The
+    # message is returned via the standard {success: false, message} envelope
+    # (see app/core/errors.py) so the frontend can display it as-is.
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Sorry, this feature is not supported for DEMO. It will be available in production.",
     )
-    return create_success_response(TemplateMetaResponse.from_view(view), "Template updated")
 
 
 @router.post("/reports/{report_id}/approve", response_model=StandardResponse[ReportResponse])
